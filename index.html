@@ -1042,6 +1042,9 @@ function submitOrder() {
   // 显示支付二维码页面
   document.getElementById('payOrderNo').textContent = orderNo;
   document.getElementById('payAmount').textContent = `¥${total.toFixed(2)}`;
+  // 恢复默认副标题（可能被"打回重付"修改过）
+  const tipsEl = document.querySelector('#payPage .pay-subtitle');
+  if (tipsEl) tipsEl.textContent = '使用微信 / 支付宝 / 云闪付扫码';
   document.getElementById('payPage').classList.add('show');
 
   // 重置勾选状态（防止上次的勾选影响本次）
@@ -1060,10 +1063,6 @@ function submitOrder() {
   startPayPageWatch();
 }
 
-function updateAdminStats() {
-  const el = document.getElementById('statNewOrders');
-  if (el) el.textContent = orders.filter(o=>o.status==='new').length;
-}
 
 function confirmPayment() {
   // 停止离开检测
@@ -1238,6 +1237,38 @@ function cancelOtherPhoneConfirm() {
   if (overlay) overlay.remove();
 }
 
+// 商家打回后，顾客重新付款
+function retryPayment(orderNo) {
+  const o = orders.find(o => o.no === orderNo);
+  if (!o) { showToast('订单不存在'); return; }
+
+  // 打开支付页面，重新付款
+  document.getElementById('payOrderNo').textContent = orderNo;
+  document.getElementById('payAmount').textContent = `¥${o.total.toFixed(2)}`;
+
+  // 重置勾选状态
+  const confirmArea = document.getElementById('payConfirmArea');
+  const checkbox = document.getElementById('payConfirmCheck');
+  if (confirmArea) confirmArea.style.display = 'none';
+  if (checkbox) checkbox.checked = false;
+
+  // 修改支付页提示（打回重付专用）
+  const tipsEl = document.querySelector('#payPage .pay-subtitle');
+  if (tipsEl) tipsEl.textContent = '⚠️ 商家已打回，请重新扫码付款';
+
+  // 切到支付页
+  document.getElementById('payPage').classList.add('show');
+
+  // 重新启用离开检测
+  startPayPageWatch();
+
+  // 默认禁用按钮
+  const btnPayDone = document.getElementById('btnPayDone');
+  btnPayDone.disabled = true;
+  btnPayDone.style.opacity = '0.5';
+  btnPayDone.style.cursor = 'not-allowed';
+}
+
 function backToMenu() {
   document.getElementById('successPage').classList.remove('show');
 }
@@ -1262,14 +1293,20 @@ function doLookupOrder() {
     'pending':  { text: '待确认收款', color: '#856404', bg: '#fff3cd' },
     'new':      { text: '待接单',     color: '#856404', bg: '#fff3cd' },
     'making':   { text: '制作中',     color: '#004085', bg: '#cce5ff' },
-    'done':      { text: '已完成',     color: '#155724', bg: '#d4edda' },
+    'done':     { text: '已完成',     color: '#155724', bg: '#d4edda' },
     'cancelled':{ text: '已取消',     color: '#721c24', bg: '#f8d7da' },
     'rejected': { text: '已拒绝',     color: '#721c24', bg: '#f8d7da' },
+    'retry':    { text: '⚠️ 等待重新付款', color: '#c62828', bg: '#ffebee' },
   };
 
   resultDiv.innerHTML = matched.map(o => {
     const s = statusMap[o.status] || { text: o.status, color: '#666', bg: '#eee' };
     const itemsText = o.items.map(i => `${i.name} × ${i.qty}`).join('、');
+    // 打回重付：显示重新付款按钮
+    let retryBtn = '';
+    if (o.status === 'retry') {
+      retryBtn = `<button onclick="retryPayment('${o.no}')" style="display:block;width:100%;margin-top:10px;padding:10px;background:linear-gradient(135deg,#c62828,#e53935);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;">🔄 商家打回，点击重新付款</button>`;
+    }
     return `
       <div class="lookup-order-card">
         <div class="lookup-order-header">
@@ -1279,6 +1316,7 @@ function doLookupOrder() {
         <div class="lookup-order-items">${itemsText}</div>
         <div class="lookup-order-total">¥${o.total.toFixed(2)}</div>
         <div style="font-size:12px;color:#aaa;margin-top:4px;">${o.time}${o.remark ? ' · ' + o.remark : ''}</div>
+        ${retryBtn}
       </div>
     `;
   }).join('');
@@ -1361,15 +1399,17 @@ function renderAdminOrders() {
     // 状态标签
     let statusClass = '', statusText = '';
     if (o.status === 'pending') { statusClass = 'status-pending'; statusText = '待确认收款'; }
+    else if (o.status === 'retry') { statusClass = 'status-pending'; statusText = '↩️ 已打回重付'; }
     else if (o.status === 'new') { statusClass = 'status-new'; statusText = '待接单'; }
     else if (o.status === 'making') { statusClass = 'status-making'; statusText = '制作中'; }
+    else if (o.status === 'done') { statusClass = 'status-done'; statusText = '已完成'; }
     else { statusClass = 'status-done'; statusText = '已完成'; }
 
     // 操作按钮
     let actions = '';
     if (o.status === 'pending') {
-      // 待确认收款：显示"确认收款"和"取消订单"按钮
-      actions = `<button class="btn-action btn-accept" onclick="confirmPaymentReceived('${o.no}')">✅ 确认收款</button><button class="btn-action btn-reject" onclick="cancelOrder('${o.no}')">取消订单</button>`;
+      // 待确认收款：确认收款 / 打回重付 / 取消订单
+      actions = `<button class="btn-action btn-accept" onclick="confirmPaymentReceived('${o.no}')">✅ 确认收款</button><button class="btn-action btn-retry" onclick="retryOrder('${o.no}')" style="background:#fff3cd;color:#c62828;border:1px solid #c62828;">↩️ 打回重付</button><button class="btn-action btn-reject" onclick="cancelOrder('${o.no}')">取消订单</button>`;
     } else if (o.status === 'new') {
       actions = `<button class="btn-action btn-accept" onclick="acceptOrder('${o.no}')">✅ 接单</button><button class="btn-action btn-reject" onclick="rejectOrder('${o.no}')">拒绝</button>`;
     } else if (o.status === 'making') {
@@ -1666,6 +1706,17 @@ function cancelOrder(no) {
   // 商家取消订单（顾客未付款或联系不上）
   updateOrderStatus(no, 'cancelled', '订单已取消');
 }
+function retryOrder(no) {
+  // 商家打回订单让顾客重新付款
+  const o = orders.find(o => o.no === no);
+  if (o) {
+    o.status = 'retry';
+    renderAdminOrders();
+    updateAdminStats();
+    saveOrdersToLocal();
+    showToast('↩️ 已打回，顾客可查看订单重新付款');
+  }
+}
 function rejectOrder(no) {
   updateOrderStatus(no, 'rejected', '已拒绝该订单');
 }
@@ -1698,6 +1749,7 @@ function toggleItem(id, available) {
 
 function updateAdminStats() {
   const pending = orders.filter(o => o.status === 'pending').length;
+  const retry = orders.filter(o => o.status === 'retry').length;
   const newOrders = orders.filter(o => o.status === 'new').length;
   const making = orders.filter(o => o.status === 'making').length;
   const done = orders.filter(o => o.status === 'done').length;
@@ -1707,7 +1759,7 @@ function updateAdminStats() {
   const statMaking = document.getElementById('statMakingOrders');
   const statDone = document.getElementById('statDoneOrders');
 
-  if (statPending) statPending.textContent = pending;
+  if (statPending) statPending.textContent = retry > 0 ? `${pending}+${retry}` : pending;
   if (statNew) statNew.textContent = newOrders;
   if (statMaking) statMaking.textContent = making;
   if (statDone) statDone.textContent = done;
