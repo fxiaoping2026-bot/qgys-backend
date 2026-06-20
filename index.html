@@ -1112,9 +1112,9 @@ function saveOrdersToLocal() {
 async function syncOrderToAPI(order) {
   // 将订单推送到后端 → 飞书
   const base = getApiBase();
-  if (!base && window.location.hostname !== 'localhost') return; // 线上无后端时静默跳过
+  if (!base) return; // 未配置后端，静默跳过
   try {
-    const url = base ? `${base}/api/orders` : '/api/orders';
+    const url = `${base}/api/orders`;
     const resp = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1141,9 +1141,9 @@ async function syncOrderToAPI(order) {
 
 async function syncOrderStatusToAPI(orderNo, status) {
   const base = getApiBase();
-  if (!base && window.location.hostname !== 'localhost') return false;
+  if (!base) return false;
   try {
-    const url = base ? `${base}/api/orders/${orderNo}` : `/api/orders/${orderNo}`;
+    const url = `${base}/api/orders/${orderNo}`;
     const resp = await fetch(url, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -1155,12 +1155,12 @@ async function syncOrderStatusToAPI(orderNo, status) {
   return false;
 }
 
-async function pullOrdersFromAPI() {
+async function pullOrdersFromAPI(silent) {
   // 从飞书拉取所有订单，与本地合并
   const base = getApiBase();
-  if (!base && window.location.hostname !== 'localhost') return;
+  if (!base) return false; // 未配置后端，静默跳过
   try {
-    const url = base ? `${base}/api/orders/all` : '/api/orders/all';
+    const url = `${base}/api/orders/all`;
     const resp = await fetch(url);
     const data = await resp.json();
     if (data.success && data.orders) {
@@ -1169,7 +1169,6 @@ async function pullOrdersFromAPI() {
       const localMap = {};
       for (const o of orders) { localMap[o.no] = o; }
       for (const fo of data.orders) {
-        // 飞书订单有更权威的状态，覆盖本地
         if (localMap[fo.no]) {
           localMap[fo.no].status = fo.status;
           localMap[fo.no].items = fo.items;
@@ -1182,20 +1181,22 @@ async function pullOrdersFromAPI() {
       saveOrdersToLocal();
       renderAdminOrders();
       updateAdminStats();
-      showToast('✅ 已从云同步 ' + data.orders.length + ' 条订单');
+      if (!silent) showToast('✅ 已从云同步 ' + data.orders.length + ' 条订单');
+      return true;
     }
   } catch (e) {
     console.warn('⚠️ 拉取订单失败:', e.message);
-    showToast('⚠️ 云端同步失败，使用本地数据');
+    if (!silent) showToast('⚠️ 云端同步失败，使用本地数据');
   }
+  return false;
 }
 
 async function pullOrdersByPhone(phone) {
   // 从飞书查订单（跨设备同步）
   const base = getApiBase();
-  if (!base && window.location.hostname !== 'localhost') return null;
+  if (!base) return null;
   try {
-    const url = base ? `${base}/api/orders/${phone}` : `/api/orders/${phone}`;
+    const url = `${base}/api/orders/${phone}`;
     const resp = await fetch(url);
     const data = await resp.json();
     if (data.success && data.orders) {
@@ -1489,6 +1490,8 @@ function checkAdminPassword() {
     document.getElementById('customerTabs').style.display = 'none';
     document.getElementById('adminTabs').style.display = 'flex';
     switchPage('admin');
+    // 自动从云端拉取订单（静默同步，不弹 toast）
+    pullOrdersFromAPI(true).catch(e => console.log('⚠️ 后台同步未就绪:', e.message));
   } else {
     document.getElementById('adminPwdError').style.display = 'block';
     document.getElementById('adminPwdInput').value = '';
@@ -1586,10 +1589,19 @@ function loadMenuFromLocal() {
   } catch(e) {}
 }
 
-// ===== 飞书同步：API 地址配置（可修改，默认同源 /api）=====
-let API_BASE = localStorage.getItem('qgys_api_base') || '';
+// ===== 飞书同步：API 地址配置 =====
+// 优先级：URL参数 ?api=  > localStorage > 默认值
+const _urlApi = new URLSearchParams(window.location.search).get('api');
+const DEFAULT_API_BASE = ''; // Railway 部署后填入 https://xxx.up.railway.app
+let API_BASE = _urlApi || localStorage.getItem('qgys_api_base') || DEFAULT_API_BASE;
 function getApiBase() {
-  return API_BASE || '';  // 空字符串 = 同源（如 http://localhost:3000）
+  return API_BASE;
+}
+// 设置 API 地址（同时保存到 localStorage）
+function setApiBase(url) {
+  API_BASE = url;
+  if (url) localStorage.setItem('qgys_api_base', url);
+  else localStorage.removeItem('qgys_api_base');
 }
 
 // ===== 飞书同步：从飞书加载菜单 =====
