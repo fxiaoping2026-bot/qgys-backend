@@ -1533,8 +1533,9 @@ function renderAdminOrders() {
       actions = `<span style="font-size:12px;color:green">✅ 已完成</span>`;
     }
 
+    const collapsedClass = (o.status === 'done') ? 'collapsed' : '';
     return `
-    <div class="order-card collapsed" id="order-${o.no}" onclick="toggleOrderCard('${o.no}')">
+    <div class="order-card ${collapsedClass}" id="order-${o.no}" onclick="toggleOrderCard('${o.no}')">
       <div class="order-card-header">
         <div style="display:flex;align-items:center;">
           <span class="order-toggle-icon">▼</span>
