@@ -494,6 +494,10 @@
 
     <div class="admin-section-title">📋 实时订单</div>
     <div id="adminOrderList"></div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;">
+      <button onclick="pullOrdersFromAPI()" style="background:#e8f5e9;color:#2e7d32;font-size:12px;padding:5px 12px;border:none;border-radius:6px;cursor:pointer;">☁️ 云端同步订单</button>
+      <span style="font-size:11px;color:#aaa;">☁️ 跨设备共享，需要后端在线</span>
+    </div>
 
     <div class="admin-section-title">🥘 菜单管理</div>
     <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
@@ -1036,6 +1040,8 @@ function submitOrder() {
   // 保存到本地
   orders.unshift(newOrder);
   saveOrdersToLocal();
+  // 同步到飞书（跨设备共享）
+  syncOrderToAPI(newOrder);
 
   closeCheckout();
 
@@ -1074,6 +1080,7 @@ function confirmPayment() {
   if (o) {
     o.status = 'pending';  // 待商家确认收款
     saveOrdersToLocal();
+    syncOrderStatusToAPI(orderNo, 'pending');
   }
 
   document.getElementById('payPage').classList.remove('show');
@@ -1101,6 +1108,103 @@ function saveOrdersToLocal() {
   } catch (e) {
     console.error('保存订单失败:', e);
   }
+}
+
+// ===== 订单跨设备同步（飞书API） =====
+async function syncOrderToAPI(order) {
+  // 将订单推送到后端 → 飞书
+  const base = getApiBase();
+  if (!base && window.location.hostname !== 'localhost') return; // 线上无后端时静默跳过
+  try {
+    const url = base ? `${base}/api/orders` : '/api/orders';
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        no: order.no,
+        phone: order.phone,
+        status: order.status,
+        items: order.items,
+        total: order.total,
+        remark: order.remark || '',
+        time: order.time,
+      }),
+    });
+    const data = await resp.json();
+    if (data.success) {
+      console.log('📤 订单已同步到飞书:', order.no, data.action);
+      return true;
+    }
+  } catch (e) {
+    console.warn('⚠️ 订单同步飞书失败（离线可用）:', e.message);
+  }
+  return false;
+}
+
+async function syncOrderStatusToAPI(orderNo, status) {
+  const base = getApiBase();
+  if (!base && window.location.hostname !== 'localhost') return false;
+  try {
+    const url = base ? `${base}/api/orders/${orderNo}` : `/api/orders/${orderNo}`;
+    const resp = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    const data = await resp.json();
+    if (data.success) { console.log('📤 状态已同步:', orderNo, '→', status); return true; }
+  } catch (e) { console.warn('⚠️ 状态同步失败:', e.message); }
+  return false;
+}
+
+async function pullOrdersFromAPI() {
+  // 从飞书拉取所有订单，与本地合并
+  const base = getApiBase();
+  if (!base && window.location.hostname !== 'localhost') return;
+  try {
+    const url = base ? `${base}/api/orders/all` : '/api/orders/all';
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (data.success && data.orders) {
+      console.log('📥 从飞书拉取订单:', data.orders.length, '条');
+      // 按订单号合并（飞书数据覆盖本地同号订单）
+      const localMap = {};
+      for (const o of orders) { localMap[o.no] = o; }
+      for (const fo of data.orders) {
+        // 飞书订单有更权威的状态，覆盖本地
+        if (localMap[fo.no]) {
+          localMap[fo.no].status = fo.status;
+          localMap[fo.no].items = fo.items;
+          localMap[fo.no].total = fo.total;
+          localMap[fo.no].remark = fo.remark;
+        } else {
+          orders.unshift(fo);
+        }
+      }
+      saveOrdersToLocal();
+      renderAdminOrders();
+      updateAdminStats();
+      showToast('✅ 已从云同步 ' + data.orders.length + ' 条订单');
+    }
+  } catch (e) {
+    console.warn('⚠️ 拉取订单失败:', e.message);
+    showToast('⚠️ 云端同步失败，使用本地数据');
+  }
+}
+
+async function pullOrdersByPhone(phone) {
+  // 从飞书查订单（跨设备同步）
+  const base = getApiBase();
+  if (!base && window.location.hostname !== 'localhost') return null;
+  try {
+    const url = base ? `${base}/api/orders/${phone}` : `/api/orders/${phone}`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+    if (data.success && data.orders) {
+      return data.orders;
+    }
+  } catch (e) { console.warn('⚠️ 云端查单失败:', e.message); }
+  return null;
 }
 
 // 从本地存储读取订单
@@ -1274,13 +1378,19 @@ function backToMenu() {
 }
 
 // ===== 手机号查询订单 =====
-function doLookupOrder() {
+async function doLookupOrder() {
   const phone = document.getElementById('lookupPhone').value.trim();
   if (!phone) { showToast('请输入手机号'); return; }
   if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('手机号格式不对哦'); return; }
 
-  // 查找该手机号的所有订单
-  const matched = orders.filter(o => o.phone === phone);
+  // 优先从云端查（跨设备同步）
+  let matched = orders.filter(o => o.phone === phone);
+  const cloudOrders = await pullOrdersByPhone(phone);
+  if (cloudOrders && cloudOrders.length > 0) {
+    // 云端数据更权威，用云端结果
+    matched = cloudOrders;
+    console.log('📥 云端查到', matched.length, '条订单');
+  }
   const resultDiv = document.getElementById('lookupResult');
 
   if (matched.length === 0) {
@@ -1714,6 +1824,7 @@ function retryOrder(no) {
     renderAdminOrders();
     updateAdminStats();
     saveOrdersToLocal();
+    syncOrderStatusToAPI(no, 'retry');
     showToast('↩️ 已打回，顾客可查看订单重新付款');
   }
 }
@@ -1725,13 +1836,15 @@ function doneOrder(no) {
 }
 
 function updateOrderStatus(orderNo, status, toastMsg) {
-  // 直接更新本地订单（不依赖后端）
+  // 更新本地订单
   const o = orders.find(o => o.no === orderNo);
   if (o) {
     o.status = status;
     renderAdminOrders();
     updateAdminStats();
     saveOrdersToLocal();
+    // 同步状态到飞书（跨设备）
+    syncOrderStatusToAPI(orderNo, status);
     showToast(toastMsg);
   }
 }
