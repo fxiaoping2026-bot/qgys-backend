@@ -1,0 +1,177 @@
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=750, initial-scale=1">
+<title>海报B - 清新海洋风</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing: border-box; }
+  body { width: 750px; height: 1200px; overflow: hidden; font-family: 'PingFang SC', sans-serif; }
+
+  .poster-b {
+    width: 750px; height: 1200px;
+    background: linear-gradient(170deg, #e8f6f3 0%, #d0e8e2 30%, #f0f7ff 70%, #e0f0e8 100%);
+    position: relative; display: flex; flex-direction: column; align-items: center;
+    padding: 50px 45px 40px;
+  }
+
+  /* 海洋波浪装饰 */
+  .wave-deco {
+    position: absolute; bottom: 0; left: 0; width: 100%; height: 200px;
+    background: linear-gradient(180deg, transparent 0%, rgba(20,150,120,0.08) 100%);
+    border-radius: 50% 50% 0 0 / 40px 40px 0 0;
+  }
+  .wave-deco-2 {
+    position: absolute; top: 0; left: 0; width: 100%; height: 120px;
+    background: linear-gradient(180deg, rgba(20,150,120,0.12) 0%, transparent 100%);
+  }
+
+  /* 圆点装饰 */
+  .dot-pattern {
+    position: absolute; top: 40px; right: 30px;
+    width: 80px; height: 80px;
+    background-image: radial-gradient(circle, rgba(20,150,120,0.15) 1px, transparent 1px);
+    background-size: 12px 12px;
+  }
+
+  .brand-area { text-align: center; margin-bottom: 24px; position: relative; z-index: 2; }
+  .brand-icon { font-size: 60px; margin-bottom: 8px; }
+  .brand-name { font-size: 48px; font-weight: 900; color: #149780; letter-spacing: 5px; }
+  .brand-line { width: 80px; height: 4px; background: linear-gradient(90deg, #149780, #2bb58a); border-radius: 2px; margin: 12px auto 8px; }
+  .brand-sub { font-size: 18px; color: #3a8a70; letter-spacing: 4px; }
+
+  /* 主内容区 - 海洋风白色卡片 */
+  .content-card {
+    background: rgba(255,255,255,0.85); backdrop-filter: blur(10px);
+    border-radius: 28px; padding: 36px 30px; width: 100%;
+    box-shadow: 0 12px 40px rgba(20,150,120,0.1), 0 0 0 1px rgba(20,150,120,0.06);
+    position: relative; z-index: 2;
+    display: flex; flex-direction: column; align-items: center;
+    border: 1.5px solid rgba(20,150,120,0.1);
+  }
+
+  .scan-badge {
+    background: linear-gradient(135deg, #149780, #2bb58a);
+    color: #fff; font-size: 15px; font-weight: 700; letter-spacing: 3px;
+    padding: 8px 24px; border-radius: 20px; margin-bottom: 20px;
+    box-shadow: 0 4px 15px rgba(20,150,120,0.3);
+  }
+  .scan-title { font-size: 34px; font-weight: 900; color: #1a1a2e; margin-bottom: 6px; }
+  .scan-sub { font-size: 17px; color: #149780; margin-bottom: 24px; font-weight: 600; }
+
+  .qr-wrap {
+    width: 300px; height: 300px; border-radius: 22px;
+    background: #fff; padding: 14px;
+    border: 2.5px solid #2bb58a;
+    box-shadow: 0 8px 30px rgba(20,150,120,0.15);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px; position: relative;
+  }
+  .qr-wrap::before {
+    content: ''; position: absolute; inset: -8px; border-radius: 28px;
+    border: 1.5px dashed rgba(20,150,120,0.25);
+  }
+  .qr-wrap img { width: 100%; height: 100%; object-fit: contain; }
+
+  .steps { display: flex; gap: 10px; margin-bottom: 20px; }
+  .step-item { text-align: center; flex: 1; }
+  .step-num { width: 32px; height: 32px; background: linear-gradient(135deg, #149780, #2bb58a); color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; margin: 0 auto 6px; }
+  .step-label { font-size: 13px; color: #3a8a70; font-weight: 600; }
+
+  .food-tags { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+  .food-tag { background: rgba(20,150,120,0.08); color: #149780; font-size: 15px; font-weight: 600; padding: 8px 16px; border-radius: 12px; border: 1px solid rgba(20,150,120,0.15); }
+
+  .footer-area { margin-top: 28px; text-align: center; position: relative; z-index: 2; }
+  .footer-main { font-size: 20px; font-weight: 800; color: #149780; letter-spacing: 2px; }
+  .footer-sub { font-size: 14px; color: #6aae98; margin-top: 6px; }
+  .save-btn-b {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, #149780, #2bb58a);
+    color: #fff; font-size: 18px; font-weight: 700; letter-spacing: 2px;
+    border: none; border-radius: 40px; padding: 14px 48px;
+    box-shadow: 0 6px 24px rgba(20,150,120,0.4);
+    cursor: pointer; z-index: 999; transition: transform 0.15s;
+  }
+  .save-btn-b:active { transform: translateX(-50%) scale(0.96); }
+  .save-tip { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.78); color: #fff; font-size: 16px; padding: 14px 32px; border-radius: 12px; z-index: 1000; display: none; }
+</style>
+</head>
+<body>
+<div class="poster-b">
+  <div class="wave-deco-2"></div>
+  <div class="wave-deco"></div>
+  <div class="dot-pattern"></div>
+
+  <div class="brand-area">
+    <div class="brand-icon">🐟</div>
+    <div class="brand-name">企港渔叔</div>
+    <div class="brand-line"></div>
+    <div class="brand-sub">鲜 · 从 · 港 · 口 · 到 · 餐 · 桌</div>
+  </div>
+
+  <div class="content-card">
+    <div class="scan-badge">📱 微信扫码点餐</div>
+    <div class="scan-title">轻松下单 · 无需等待</div>
+    <div class="scan-sub">识别二维码，即刻开始点餐</div>
+
+    <div class="qr-wrap">
+      <img src="qrcode.png" alt="点餐二维码">
+    </div>
+
+    <div class="steps">
+      <div class="step-item">
+        <div class="step-num">1</div>
+        <div class="step-label">扫码进入</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">2</div>
+        <div class="step-label">挑选海鲜</div>
+      </div>
+      <div class="step-item">
+        <div class="step-num">3</div>
+        <div class="step-label">在线下单</div>
+      </div>
+    </div>
+
+    <div class="food-tags">
+      <span class="food-tag">🦐 鲜活明虾</span>
+      <span class="food-tag">🦀 精选螃蟹</span>
+      <span class="food-tag">🐟 当日海鱼</span>
+      <span class="food-tag">🦑 爽脆鱿鱼</span>
+    </div>
+  </div>
+
+  <div class="footer-area">
+    <div class="footer-main">📍 禅城区水悦龙湾店</div>
+    <div class="footer-sub">新鲜海鲜 · 现点现做 · 社区鲜味</div>
+  </div>
+</div>
+
+<button class="save-btn-b" id="saveBtnB" onclick="saveAsImageB()">📥 保存为图片</button>
+<div class="save-tip" id="saveTipB">正在生成图片，请稍候…</div>
+
+<script>
+function saveAsImageB() {
+  var tip = document.getElementById('saveTipB');
+  tip.style.display = 'block';
+  document.getElementById('saveBtnB').style.display = 'none';
+  setTimeout(function() {
+    html2canvas(document.querySelector('.poster-b'), {
+      width: 750, height: 1200, scale: 2,
+      backgroundColor: null, useCORS: true, logging: false
+    }).then(function(canvas) {
+      tip.style.display = 'none';
+      var link = document.createElement('a');
+      link.download = '企港渔叔-点餐海报-清新海洋风.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      document.getElementById('saveBtnB').style.display = 'block';
+    }).catch(function() {
+      tip.innerText = '❌ 生成失败，请截图保存';
+      setTimeout(function(){ tip.style.display='none'; document.getElementById('saveBtnB').style.display='block'; }, 2000);
+    });
+  }, 100);
+}
+</script>
+</body>
+</html>

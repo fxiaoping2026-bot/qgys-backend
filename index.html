@@ -199,6 +199,7 @@
     position: fixed; inset: 0; background: #fff; z-index: 500;
     display: none; flex-direction: column; align-items: center;
     padding: 24px 20px;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
   }
   .pay-page.show { display: flex; }
   .pay-page h2 { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
@@ -627,19 +628,16 @@
   </div>
   <div class="pay-order-no">订单号：<span id="payOrderNo"></span></div>
 
-  <!-- 勾选确认区域（默认隐藏，识别到跳转后显示） -->
-  <div id="payConfirmArea" style="display:none;margin-top:16px;text-align:center;">
-    <label style="display:inline-flex;align-items:center;cursor:pointer;font-size:15px;color:#333;background:#f0f9f0;padding:12px 20px;border-radius:12px;border:2px solid #07c160;">
+  <!-- 勾选确认区域（始终显示） -->
+  <div id="payConfirmArea" style="margin-top:16px;text-align:center;">
+    <label style="display:inline-flex;align-items:center;cursor:pointer;font-size:15px;color:#333;">
       <input type="checkbox" id="payConfirmCheck" style="width:20px;height:20px;margin-right:10px;accent-color:#07c160;">
       ✅ 我已扫码完成付款
     </label>
   </div>
 
-  <button class="btn-pay-done" id="btnPayDone" onclick="confirmPayment()" disabled style="opacity:0.5;cursor:not-allowed;margin-top:16px;">✅ 提交订单</button>
+  <button class="btn-pay-done" id="btnPayDone" onclick="confirmPayment()" disabled style="opacity:0.5;cursor:not-allowed;margin-top:12px;">✅ 提交订单</button>
   <div style="margin-top:12px;font-size:12px;color:#999;">💡 提示：请先长按识别上方二维码付款，付款后再点按钮</div>
-  <div style="margin-top:8px;">
-    <button style="background:none;border:1px dashed #999;color:#999;font-size:13px;padding:8px 16px;border-radius:20px;cursor:pointer;" onclick="showOtherPhoneConfirm()">📱 我用其他手机付款了</button>
-  </div>
   <button style="background:none;border:none;color:#999;font-size:13px;margin-top:12px;cursor:pointer;" onclick="cancelPay()">取消订单</button>
 </div>
 
@@ -1056,7 +1054,7 @@ function submitOrder() {
   // 重置勾选状态（防止上次的勾选影响本次）
   const confirmArea = document.getElementById('payConfirmArea');
   const checkbox = document.getElementById('payConfirmCheck');
-  if (confirmArea) confirmArea.style.display = 'none';
+  // confirmArea 始终可见，只重置勾选状态
   if (checkbox) checkbox.checked = false;
 
   // 默认禁用"提交订单"按钮（防止乱点）
@@ -1351,9 +1349,7 @@ function retryPayment(orderNo) {
   document.getElementById('payAmount').textContent = `¥${o.total.toFixed(2)}`;
 
   // 重置勾选状态
-  const confirmArea = document.getElementById('payConfirmArea');
   const checkbox = document.getElementById('payConfirmCheck');
-  if (confirmArea) confirmArea.style.display = 'none';
   if (checkbox) checkbox.checked = false;
 
   // 修改支付页提示（打回重付专用）

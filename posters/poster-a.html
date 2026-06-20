@@ -1,0 +1,146 @@
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=750, initial-scale=1">
+<title>海报A - 经典红白风</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { width: 750px; height: 1200px; overflow: hidden; font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+
+  .poster-a {
+    width: 750px; height: 1200px;
+    background: linear-gradient(175deg, #e8441a 0%, #c0340d 45%, #1a1a2e 100%);
+    position: relative; display: flex; flex-direction: column; align-items: center;
+    padding: 60px 50px 50px;
+  }
+
+  /* 顶部装饰波浪 */
+  .wave-top {
+    position: absolute; top: 0; left: 0; width: 100%; height: 180px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 750 120'%3E%3Cpath d='M0,60 C120,120 240,0 375,60 C510,120 630,0 750,60 L750,0 L0,0 Z' fill='%23ffffff' opacity='0.15'/%3E%3C/svg%3E") no-repeat;
+    background-size: cover;
+  }
+
+  .brand-area { text-align: center; margin-bottom: 30px; position: relative; z-index: 2; }
+  .brand-name { font-size: 52px; font-weight: 900; color: #fff; letter-spacing: 6px; text-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+  .brand-sub { font-size: 22px; color: rgba(255,255,255,0.85); margin-top: 8px; letter-spacing: 3px; }
+  .brand-tag { display: inline-block; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); border-radius: 20px; padding: 6px 20px; font-size: 16px; color: #ffe0d0; margin-top: 12px; }
+
+  /* 白色内容卡片 */
+  .content-card {
+    background: #fff; border-radius: 24px; padding: 40px 35px; width: 100%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25); position: relative; z-index: 2;
+    display: flex; flex-direction: column; align-items: center;
+  }
+
+  .scan-title { font-size: 32px; font-weight: 800; color: #e8441a; margin-bottom: 8px; letter-spacing: 2px; }
+  .scan-sub { font-size: 18px; color: #888; margin-bottom: 28px; }
+
+  /* 二维码区域 */
+  .qr-wrap {
+    width: 320px; height: 320px; border-radius: 20px;
+    background: #fff; padding: 16px;
+    border: 3px solid #e8441a;
+    box-shadow: 0 8px 30px rgba(232,68,26,0.2);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 24px;
+  }
+  .qr-wrap img { width: 100%; height: 100%; object-fit: contain; }
+
+  .tip-text { font-size: 20px; color: #e8441a; font-weight: 700; background: #fef5f3; border-radius: 12px; padding: 10px 28px; }
+  .tip-arrow { font-size: 28px; margin-top: 6px; color: #e8441a; }
+
+  /* 底部菜品展示 */
+  .food-showcase {
+    display: flex; gap: 16px; margin-top: 30px; width: 100%; justify-content: center;
+  }
+  .food-item {
+    text-align: center; font-size: 38px;
+    background: #f9f9f9; border-radius: 16px; width: 80px; height: 80px;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .footer-text { font-size: 16px; color: rgba(255,255,255,0.6); margin-top: 30px; position: relative; z-index: 2; letter-spacing: 1px; }
+
+  /* 保存按钮 */
+  .save-btn {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, #e8441a, #ff6b3d);
+    color: #fff; font-size: 18px; font-weight: 700; letter-spacing: 2px;
+    border: none; border-radius: 40px; padding: 14px 48px;
+    box-shadow: 0 6px 24px rgba(232,68,26,0.4);
+    cursor: pointer; z-index: 999; transition: transform 0.15s;
+  }
+  .save-btn:active { transform: translateX(-50%) scale(0.96); }
+  .save-tip { position: fixed; top: 50%; left: 50%; transform: translate(-50%,-50%); background: rgba(0,0,0,0.78); color: #fff; font-size: 16px; padding: 14px 32px; border-radius: 12px; z-index: 1000; display: none; }
+</style>
+</head>
+<body>
+<div class="poster-a">
+  <div class="wave-top"></div>
+  <div class="brand-area">
+    <div class="brand-name">企港渔叔</div>
+    <div class="brand-sub">海 鲜 厨 房 · 社 区 鲜 味</div>
+    <div class="brand-tag">📍 佛山市禅城区水悦龙湾</div>
+  </div>
+
+  <div class="content-card">
+    <div class="scan-title">📱 扫码点餐</div>
+    <div class="scan-sub">长按识别二维码，即刻下单</div>
+    <div class="qr-wrap">
+      <img src="qrcode.png" alt="点餐二维码">
+    </div>
+    <div class="tip-text">打开微信扫一扫</div>
+    <div class="tip-arrow">⬇️</div>
+
+    <div class="food-showcase">
+      <div class="food-item">🦐</div>
+      <div class="food-item">🦀</div>
+      <div class="food-item">🐟</div>
+      <div class="food-item">🦑</div>
+      <div class="food-item">🦞</div>
+    </div>
+  </div>
+
+  <div class="footer-text">企港渔叔 · 新鲜海鲜 · 现点现做</div>
+</div>
+
+<!-- 保存按钮 + 提示 -->
+<button class="save-btn" id="saveBtn" onclick="saveAsImage()">📥 保存为图片</button>
+<div class="save-tip" id="saveTip">正在生成图片，请稍候…</div>
+
+<script>
+function saveAsImage() {
+  var tip = document.getElementById('saveTip');
+  tip.style.display = 'block';
+  document.getElementById('saveBtn').style.display = 'none';
+
+  // 等待提示渲染后再截图
+  setTimeout(function() {
+    var poster = document.querySelector('.poster-a');
+    if (!poster) poster = document.body.firstElementChild;
+
+    html2canvas(poster, {
+      width: 750,
+      height: 1200,
+      scale: 2,          // 2倍高清
+      backgroundColor: null,
+      useCORS: true,
+      logging: false
+    }).then(function(canvas) {
+      tip.style.display = 'none';
+      var link = document.createElement('a');
+      link.download = '企港渔叔-点餐海报-经典红白风.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      document.getElementById('saveBtn').style.display = 'block';
+    }).catch(function() {
+      tip.innerText = '❌ 生成失败，请截图保存';
+      setTimeout(function(){ tip.style.display='none'; document.getElementById('saveBtn').style.display='block'; }, 2000);
+    });
+  }, 100);
+}
+</script>
+</body>
+</html>
