@@ -504,6 +504,24 @@
     </div>
     <div id="adminMenuList"></div>
     <button class="btn-add-item" onclick="showAddItemModal()">＋ 添加新菜品</button>
+
+    <div class="admin-section-title">📱 点餐二维码</div>
+    <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
+      <div id="qrcodeContainer" style="background:#fff;padding:12px;border-radius:8px;text-align:center;">
+        <img id="qrcodeImg" src="qrcode-h5.png" alt="点餐二维码" style="width:180px;height:180px;">
+        <div style="font-size:11px;color:#888;margin-top:6px;" id="qrcodeUrl">加载中...</div>
+      </div>
+      <div style="flex:1;min-width:200px;">
+        <p style="font-size:13px;color:#666;margin:0 0 8px;">
+          📌 <b>打印此二维码贴在店内</b>，顾客扫码即可点餐
+        </p>
+        <input type="text" id="h5UrlInput" readonly style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px;font-size:12px;background:#f9f9f9;" onclick="this.select()">
+        <div style="display:flex;gap:8px;margin-top:8px;">
+          <button onclick="copyH5Url()" style="padding:6px 12px;border:none;border-radius:6px;background:#e3f2fd;color:#1565c0;cursor:pointer;font-size:12px;">📋 复制链接</button>
+          <button onclick="downloadQRCode()" style="padding:6px 12px;border:none;border-radius:6px;background:#e8f5e9;color:#2e7d32;cursor:pointer;font-size:12px;">💾 下载二维码</button>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -702,7 +720,7 @@
 
 <script>
 // ===== 菜单数据（企港渔叔社区海鲜厨房·完整菜单）=====
-const menuData = [
+let menuData = [
   {
     id: 'cat1', name: '👑 招牌生蚝', icon: '👑',
     items: [
@@ -1435,8 +1453,14 @@ async function loadMenuFromFeishu() {
   try {
     const base = getApiBase();
     const url = base ? `${base}/api/menu` : '/api/menu';
+    console.log('📡 请求飞书API:', url);
     const resp = await fetch(url);
+    console.log('📡 响应状态:', resp.status, resp.statusText);
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}: ${resp.statusText}`);
+    }
     const data = await resp.json();
+    console.log('📡 响应数据:', data);
     if (data.success && data.menuData && data.menuData.length > 0) {
       menuData = data.menuData;
       saveMenuToLocal(); // 同时保存到 localStorage
@@ -1445,12 +1469,14 @@ async function loadMenuFromFeishu() {
       renderSidebar();
       renderMenu();
       renderAdminMenu();
-      if (statusEl) { statusEl.textContent = '✅ 已从飞书加载'; statusEl.style.color = '#2e7d32'; }
+      if (statusEl) { statusEl.textContent = '✅ 已从飞书加载 ' + data.menuData.length + '道菜'; statusEl.style.color = '#2e7d32'; }
       return true;
+    } else {
+      throw new Error(data.error || '返回数据为空');
     }
   } catch(e) {
-    console.warn('⚠️ 从飞书加载菜单失败，使用本地数据', e);
-    if (statusEl) { statusEl.textContent = '❌ 从飞书加载失败（后端未启动）'; statusEl.style.color = '#c62828'; }
+    console.warn('⚠️ 从飞书加载菜单失败:', e.message);
+    if (statusEl) { statusEl.textContent = '❌ 加载失败: ' + e.message; statusEl.style.color = '#c62828'; }
   }
   return false;
 }
@@ -1763,6 +1789,43 @@ function saveApiSettings() {
   }
   showToast(val ? `后端地址已设置为：${val}` : '已恢复为同源后端');
 }
+
+// ===== 点餐二维码 =====
+function initQRCode() {
+  const url = window.location.origin + window.location.pathname;
+  const imgEl = document.getElementById('qrcodeImg');
+  const urlEl = document.getElementById('qrcodeUrl');
+  const inputEl = document.getElementById('h5UrlInput');
+  if (urlEl) urlEl.textContent = url;
+  if (inputEl) inputEl.value = url;
+  // QR code image path is relative
+  if (imgEl) imgEl.src = 'qrcode-h5.png';
+}
+
+function copyH5Url() {
+  const inputEl = document.getElementById('h5UrlInput');
+  if (!inputEl) return;
+  inputEl.select();
+  try {
+    navigator.clipboard.writeText(inputEl.value).then(() => {
+      showToast('✅ 链接已复制到剪贴板');
+    });
+  } catch(e) {
+    document.execCommand('copy');
+    showToast('✅ 链接已复制');
+  }
+}
+
+function downloadQRCode() {
+  const a = document.createElement('a');
+  a.href = 'qrcode-h5.png';
+  a.download = '企港渔叔-点餐二维码.png';
+  a.click();
+  showToast('💾 二维码下载中...');
+}
+
+// 页面加载时初始化二维码
+window.addEventListener('DOMContentLoaded', initQRCode);
 </script>
 
 <!-- ===== 后端设置弹窗 ===== -->
