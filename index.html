@@ -306,7 +306,13 @@
     background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
   }
-  .order-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .order-card-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+  /* 折叠内容区 */
+  .order-card-body { overflow: hidden; max-height: 300px; transition: max-height 0.25s ease;
+    margin-top: 10px; border-top: 1px dashed #eee; padding-top: 8px;}
+  .order-card.collapsed .order-card-body { max-height: 0; margin-top: 0; padding-top: 0; border-top: none; }
+  .order-card.collapsed .order-toggle-icon { transform: rotate(-90deg); }
+  .order-toggle-icon { transition: transform 0.25s ease; font-size: 12px; color: #999; flex-shrink: 0; margin-left: 6px;}
   .order-no-label { font-size: 13px; color: var(--text-sub); }
   .order-status {
     font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
@@ -1528,22 +1534,39 @@ function renderAdminOrders() {
     }
 
     return `
-    <div class="order-card" id="order-${o.no}">
+    <div class="order-card collapsed" id="order-${o.no}" onclick="toggleOrderCard('${o.no}')">
       <div class="order-card-header">
-        <div>
-          <div class="order-no-label">订单 ${o.no} · ${o.time}</div>
-          <div style="font-size:12px;color:#aaa;margin-top:2px">${o.phone}${o.remark ? ' · ' + o.remark : ''}</div>
+        <div style="display:flex;align-items:center;">
+          <span class="order-toggle-icon">▼</span>
+          <div>
+            <div class="order-no-label">订单 ${o.no} · ${o.time}</div>
+            <div style="font-size:12px;color:#aaa;margin-top:1px">${o.items.map(i=>i.name).slice(0,3).join('、')}${o.items.length>3?' 等'+o.items.length+'件':''} · ¥${o.total.toFixed(2)}</div>
+          </div>
         </div>
         <span class="order-status ${statusClass}">${statusText}</span>
       </div>
-      <div class="order-items-text">${o.items.map(i=>`${i.name} × ${i.qty}`).join(' | ')}</div>
-      <div class="order-footer">
-        <div class="order-total-label">¥${o.total.toFixed(2)}</div>
-        ${o.status === 'cancelled' || o.status === 'rejected' ? '<div style="font-size:12px;color:#999;">无操作</div>' : `<div class="order-actions">${actions}</div>`}
+      <div class="order-card-body">
+        <div style="font-size:12px;color:#aaa;margin-bottom:6px">${o.phone}${o.remark ? ' · ' + o.remark : ''}</div>
+        <div class="order-items-text">${o.items.map(i=>`${i.name} × ${i.qty}`).join(' | ')}</div>
+        <div class="order-footer">
+          <div class="order-total-label">¥${o.total.toFixed(2)}</div>
+          ${o.status === 'cancelled' || o.status === 'rejected' ? '<div style="font-size:12px;color:#999;">无操作</div>' : `<div class="order-actions">${actions}</div>`}
+        </div>
       </div>
     </div>
     `;
   }).join('');
+}
+
+// 折叠/展开订单卡片
+function toggleOrderCard(orderNo) {
+  const card = document.getElementById('order-' + orderNo);
+  if (card) {
+    // 阻止点击按钮时触发折叠（由事件冒泡处理）
+    const isActionClick = event && (event.target.closest('.btn-action') || event.target.closest('.order-actions'));
+    if (isActionClick) return;
+    card.classList.toggle('collapsed');
+  }
 }
 
 function renderAdminMenu() {
