@@ -317,7 +317,6 @@
   .order-status {
     font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
   }
-  .status-new { background: #fff3cd; color: #856404; }
   .status-pending { background: #ffe5b4; color: #a0522d; }
   .status-making { background: #cce5ff; color: #004085; }
   .status-done { background: #d4edda; color: #155724; }
@@ -484,10 +483,6 @@
       <div class="stat-card">
         <div class="stat-num" id="statPending">0</div>
         <div class="stat-label">待确认收款</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-num" id="statNewOrders">0</div>
-        <div class="stat-label">待接单</div>
       </div>
       <div class="stat-card">
         <div class="stat-num" id="statMakingOrders">0</div>
@@ -1035,7 +1030,7 @@ function submitOrder() {
     no: orderNo,
     items: items,
     total: total,
-    status: 'new',
+    status: 'pending',  // 待商家确认收款（确认后直接制作，无接单环节）
     time: new Date().toLocaleString('zh-CN'),
     phone: phone,
     remark: remark
@@ -1275,7 +1270,7 @@ function _onUserReturnedFromPay() {
   // 如果订单已经确认过，不再弹窗
   const orderNo = document.getElementById('payOrderNo').textContent;
   const o = orders.find(o => o.no === orderNo);
-  if (o && (o.status === 'pending' || o.status === 'new' || o.status === 'making' || o.status === 'done')) {
+  if (o && (o.status === 'pending' || o.status === 'making' || o.status === 'done')) {
     return; // 订单已有最终结果，不弹窗
   }
 
@@ -1309,7 +1304,7 @@ function showOtherPhoneConfirm() {
     <div class="modal-sheet" style="position:relative;text-align:center;">
       <div style="font-size:40px;margin-bottom:12px;">📱</div>
       <h3 style="font-size:18px;font-weight:700;margin-bottom:8px;">确认已付款？</h3>
-      <p style="font-size:14px;color:#666;margin-bottom:20px;">请确保您已用其他手机完成扫码付款<br>如未付款，商家可能无法接单哦</p>
+      <p style="font-size:14px;color:#666;margin-bottom:20px;">请确保您已用其他手机完成扫码付款<br>如未付款，商家将无法开始制作哦</p>
       <button class="btn-submit-order" style="background:linear-gradient(135deg,#07c160,#06ad56);margin-bottom:10px;"
         onclick="confirmOtherPhonePay()">✅ 确认已付款</button>
       <button class="btn-submit-order" style="background:#f0f0f0;color:#333;"
@@ -1404,7 +1399,6 @@ async function doLookupOrder() {
   // 状态映射
   const statusMap = {
     'pending':  { text: '待确认收款', color: '#856404', bg: '#fff3cd' },
-    'new':      { text: '待接单',     color: '#856404', bg: '#fff3cd' },
     'making':   { text: '制作中',     color: '#004085', bg: '#cce5ff' },
     'done':     { text: '已完成',     color: '#155724', bg: '#d4edda' },
     'cancelled':{ text: '已取消',     color: '#721c24', bg: '#f8d7da' },
@@ -1515,7 +1509,7 @@ function renderAdminOrders() {
     let statusClass = '', statusText = '';
     if (o.status === 'pending') { statusClass = 'status-pending'; statusText = '待确认收款'; }
     else if (o.status === 'retry') { statusClass = 'status-pending'; statusText = '↩️ 已打回重付'; }
-    else if (o.status === 'new') { statusClass = 'status-new'; statusText = '待接单'; }
+    else if (o.status === 'new') { statusClass = 'status-making'; statusText = '制作中'; }
     else if (o.status === 'making') { statusClass = 'status-making'; statusText = '制作中'; }
     else if (o.status === 'done') { statusClass = 'status-done'; statusText = '已完成'; }
     else { statusClass = 'status-done'; statusText = '已完成'; }
@@ -1525,8 +1519,6 @@ function renderAdminOrders() {
     if (o.status === 'pending') {
       // 待确认收款：确认收款 / 打回重付 / 取消订单
       actions = `<button class="btn-action btn-accept" onclick="confirmPaymentReceived('${o.no}')">✅ 确认收款</button><button class="btn-action btn-retry" onclick="retryOrder('${o.no}')" style="background:#fff3cd;color:#c62828;border:1px solid #c62828;">↩️ 打回重付</button><button class="btn-action btn-reject" onclick="cancelOrder('${o.no}')">取消订单</button>`;
-    } else if (o.status === 'new') {
-      actions = `<button class="btn-action btn-accept" onclick="acceptOrder('${o.no}')">✅ 接单</button><button class="btn-action btn-reject" onclick="rejectOrder('${o.no}')">拒绝</button>`;
     } else if (o.status === 'making') {
       actions = `<button class="btn-action btn-done" onclick="doneOrder('${o.no}')">✔ 完成</button>`;
     } else if (o.status === 'done') {
@@ -1838,11 +1830,16 @@ if (editItemAvailable) {
 }
 
 function acceptOrder(no) {
+  // 保留函数以兼容旧数据（status='new'的订单），新流程已跳过接单环节
   updateOrderStatus(no, 'making', '已接单，开始制作');
 }
+function rejectOrder(no) {
+  // 保留函数以兼容旧数据
+  updateOrderStatus(no, 'rejected', '商家已拒绝订单');
+}
 function confirmPaymentReceived(no) {
-  // 商家确认收到款 → 订单进入"待接单"状态
-  updateOrderStatus(no, 'new', '✅ 收款已确认，请尽快制作');
+  // 商家确认收到款 → 直接开始制作（不再有"接单"环节）
+  updateOrderStatus(no, 'making', '✅ 收款已确认，开始制作');
 }
 function cancelOrder(no) {
   // 商家取消订单（顾客未付款或联系不上）
@@ -1895,17 +1892,14 @@ function toggleItem(id, available) {
 function updateAdminStats() {
   const pending = orders.filter(o => o.status === 'pending').length;
   const retry = orders.filter(o => o.status === 'retry').length;
-  const newOrders = orders.filter(o => o.status === 'new').length;
-  const making = orders.filter(o => o.status === 'making').length;
+  const making = orders.filter(o => o.status === 'making' || o.status === 'new').length;
   const done = orders.filter(o => o.status === 'done').length;
 
   const statPending = document.getElementById('statPending');
-  const statNew = document.getElementById('statNewOrders');
   const statMaking = document.getElementById('statMakingOrders');
   const statDone = document.getElementById('statDoneOrders');
 
   if (statPending) statPending.textContent = retry > 0 ? `${pending}+${retry}` : pending;
-  if (statNew) statNew.textContent = newOrders;
   if (statMaking) statMaking.textContent = making;
   if (statDone) statDone.textContent = done;
 }
