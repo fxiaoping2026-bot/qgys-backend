@@ -632,13 +632,13 @@
   <!-- 勾选确认区域（始终显示） -->
   <div id="payConfirmArea" style="margin-top:16px;text-align:center;">
     <label style="display:inline-flex;align-items:center;cursor:pointer;font-size:15px;color:#333;">
-      <input type="checkbox" id="payConfirmCheck" style="width:20px;height:20px;margin-right:10px;accent-color:#07c160;">
+      <input type="checkbox" id="payConfirmCheck" disabled style="width:20px;height:20px;margin-right:10px;accent-color:#07c160;opacity:0.5;cursor:not-allowed;">
       ✅ 我已扫码完成付款
     </label>
   </div>
 
   <button class="btn-pay-done" id="btnPayDone" onclick="confirmPayment()" disabled style="opacity:0.5;cursor:not-allowed;margin-top:12px;">✅ 提交订单</button>
-  <div style="margin-top:12px;font-size:12px;color:#999;">💡 提示：请先长按识别上方二维码付款，付款后再点按钮</div>
+  <div style="margin-top:12px;font-size:12px;color:#999;">💡 提示：请先长按上方二维码付款（会自动跳转微信/支付宝），付完款回来后打勾提交</div>
   <button style="background:none;border:none;color:#999;font-size:13px;margin-top:12px;cursor:pointer;" onclick="cancelPay()">取消订单</button>
 </div>
 
@@ -1055,8 +1055,8 @@ function submitOrder() {
   // 重置勾选状态（防止上次的勾选影响本次）
   const confirmArea = document.getElementById('payConfirmArea');
   const checkbox = document.getElementById('payConfirmCheck');
-  // confirmArea 始终可见，只重置勾选状态
-  if (checkbox) checkbox.checked = false;
+  // confirmArea 始终可见，重置勾选状态 + 禁用勾选框（需检测到跳转才解锁）
+  if (checkbox) { checkbox.checked = false; checkbox.disabled = true; checkbox.style.opacity = '0.5'; checkbox.style.cursor = 'not-allowed'; }
 
   // 默认禁用"提交订单"按钮（防止乱点）
   const btnPayDone = document.getElementById('btnPayDone');
@@ -1261,11 +1261,9 @@ function _onUserReturnedFromPay() {
   // 停止监听，避免重复弹窗
   stopPayPageWatch();
 
-  // 显示勾选确认区域（不直接启用按钮）
-  const confirmArea = document.getElementById('payConfirmArea');
-  if (confirmArea) {
-    confirmArea.style.display = 'block';
-  }
+  // 解锁勾选框（检测到用户已离开页面去扫码，可能已完成付款）
+  const checkbox = document.getElementById('payConfirmCheck');
+  if (checkbox) { checkbox.disabled = false; checkbox.style.opacity = '1'; checkbox.style.cursor = 'pointer'; }
 
   // 如果订单已经确认过，不再弹窗
   const orderNo = document.getElementById('payOrderNo').textContent;
@@ -1350,9 +1348,9 @@ function retryPayment(orderNo) {
   document.getElementById('payOrderNo').textContent = orderNo;
   document.getElementById('payAmount').textContent = `¥${o.total.toFixed(2)}`;
 
-  // 重置勾选状态
+  // 重置勾选状态 + 禁用勾选框（需重新检测跳转）
   const checkbox = document.getElementById('payConfirmCheck');
-  if (checkbox) checkbox.checked = false;
+  if (checkbox) { checkbox.checked = false; checkbox.disabled = true; checkbox.style.opacity = '0.5'; checkbox.style.cursor = 'not-allowed'; }
 
   // 修改支付页提示（打回重付专用）
   const tipsEl = document.querySelector('#payPage .pay-subtitle');
