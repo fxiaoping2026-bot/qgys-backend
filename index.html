@@ -1592,7 +1592,7 @@ function loadMenuFromLocal() {
 // ===== 飞书同步：API 地址配置 =====
 // 优先级：URL参数 ?api=  > localStorage > 默认值
 const _urlApi = new URLSearchParams(window.location.search).get('api');
-const DEFAULT_API_BASE = ''; // Railway 部署后填入 https://xxx.up.railway.app
+const DEFAULT_API_BASE = 'https://qgys-backend-production.up.railway.app'; // Railway 后端地址
 let API_BASE = _urlApi || localStorage.getItem('qgys_api_base') || DEFAULT_API_BASE;
 function getApiBase() {
   return API_BASE;
