@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>企港渔叔社区海鲜厨房 - 扫码点餐</title>
+<!-- QRCode.js：把支付链接转成二维码图片 -->
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   :root {
@@ -592,18 +594,6 @@
       <label>备注（口味要求、忌口等）</label>
       <textarea id="inputRemark" placeholder="例如：生蚝要蒜蓉+辣椒口味，不吃太辣"></textarea>
     </div>
-    <div style="font-size:13px;color:#888;margin-bottom:10px;">支付方式</div>
-    <div class="payment-methods">
-      <div class="pay-method selected" id="pay-wechat" onclick="selectPay('wechat')">
-        <span class="pay-icon">💚</span>微信支付
-      </div>
-      <div class="pay-method" id="pay-alipay" onclick="selectPay('alipay')">
-        <span class="pay-icon">💙</span>支付宝
-      </div>
-      <div class="pay-method" id="pay-cash" onclick="selectPay('cash')">
-        <span class="pay-icon">💵</span>到店付款
-      </div>
-    </div>
     <button class="btn-submit-order" onclick="submitOrder()">立即下单</button>
   </div>
 </div>
@@ -634,14 +624,40 @@
     </div>
   </div>
 
+  <!-- 超大金额警示 -->
+  <div id="payAmountBanner" style="
+    background: linear-gradient(135deg, #e53935, #ff5252);
+    color: #fff;
+    border-radius: 16px;
+    padding: 18px 20px;
+    margin-bottom: 18px;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(229,57,53,0.35);
+    animation: pulseBanner 2s ease-in-out infinite;
+  ">
+    <div style="font-size:13px;opacity:0.9;margin-bottom:4px;">⚠️ 请支付准确金额</div>
+    <div id="payAmountBig" style="font-size:42px;font-weight:900;letter-spacing:2px;line-height:1.2;">¥0.00</div>
+    <div style="font-size:13px;opacity:0.85;margin-top:6px;">扫码后请输入以上金额，少付或多付都会影响出餐</div>
+  </div>
+
+  <style>
+    @keyframes pulseBanner {
+      0%,100% { box-shadow: 0 4px 16px rgba(229,57,53,0.35); }
+      50% { box-shadow: 0 4px 24px rgba(229,57,53,0.55); }
+    }
+  </style>
+
   <div class="pay-qr-container">
-    <img src="qrcode-pay.jpg" alt="企港渔叔收款码" class="pay-qr-img">
-    <div class="pay-amount" id="payAmount">¥0.00</div>
-    <div class="pay-amount-label">请支付以上金额</div>
+    <!-- 动态收款码（金额锁定） -->
+    <div id="qrCodeWrap" style="background:#fff;padding:16px;border-radius:12px;text-align:center;min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
+      <canvas id="payQrCanvas" style="display:none;"></canvas>
+      <div id="qrCodePlaceholder" style="color:#999;font-size:14px;">正在生成收款码…</div>
+      <div id="qrCodeError" style="color:#e53935;font-size:13px;display:none;"></div>
+    </div>
     <ul class="pay-tips">
-      <li>请使用微信/支付宝/云闪付扫上方码付款</li>
-      <li>付款金额请与订单金额一致</li>
-      <li>付款完成后，点击下方"我已付款"</li>
+      <li>① 长按上方二维码，选择"识别二维码"</li>
+      <li>② 支付页面金额已锁定，<b>无法修改</b></li>
+      <li>③ 完成付款后返回本页，勾选确认并提交</li>
     </ul>
   </div>
   <div class="pay-order-no">订单号：<span id="payOrderNo"></span></div>
@@ -1085,7 +1101,7 @@ function selectPay(method) {
   });
 }
 
-function submitOrder() {
+async function submitOrder() {
   // 换购品门槛检查：移除不满足门槛的换购品
   enforcePromoRules();
   const phone = document.getElementById('inputPhone').value.trim();
@@ -1121,7 +1137,12 @@ function submitOrder() {
 
   // 显示支付二维码页面
   document.getElementById('payOrderNo').textContent = orderNo;
-  document.getElementById('payAmount').textContent = `¥${total.toFixed(2)}`;
+  // 同步金额到新显示区域（超大红色横幅 + 收款码下方）
+  const amountStr = `¥${total.toFixed(2)}`;
+  const payAmountBig = document.getElementById('payAmountBig');
+  const payAmountInline = document.getElementById('payAmountInline');
+  if (payAmountBig) payAmountBig.textContent = amountStr;
+  if (payAmountInline) payAmountInline.textContent = amountStr;
   // 恢复默认副标题（可能被"打回重付"修改过）
   const tipsEl = document.querySelector('#payPage .pay-subtitle');
   if (tipsEl) tipsEl.textContent = '使用微信 / 支付宝 / 云闪付扫码';
@@ -1141,8 +1162,75 @@ function submitOrder() {
 
   // 启动"离开检测" —— 检测顾客是否跳转去扫码付款
   startPayPageWatch();
+
+  // 【核心】获取动态收款码（金额锁定，防少付）
+  await loadDynamicQrCode(total, orderNo);
 }
 
+
+// ============================================================
+// 动态收款码：调用后端预下单接口，金额锁定防少付
+// ============================================================
+async function loadDynamicQrCode(total, orderNo) {
+  const qrCanvas     = document.getElementById('payQrCanvas');
+  const qrPlaceholder = document.getElementById('qrCodePlaceholder');
+  const qrError      = document.getElementById('qrCodeError');
+
+  // UI：加载中
+  if (qrPlaceholder) qrPlaceholder.style.display = 'block';
+  if (qrCanvas)     qrCanvas.style.display = 'none';
+  if (qrError)      qrError.style.display = 'none';
+
+  try {
+    const res  = await fetch('/api/shoukuanba/precreate', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({
+        totalAmountYuan: Number(total).toFixed(2),
+        clientSn:         orderNo,
+        subject:          '企港渔叔下单',
+        payway:           '3',  // 3=微信，1=支付宝
+      }),
+    });
+    const data = await res.json();
+
+    if (data.success && data.qrCode) {
+      // ✅ 成功：用 QRCode.js 把支付链接转成二维码
+      if (qrCanvas) {
+        QRCode.toCanvas(qrCanvas, data.qrCode, { width: 180, margin: 2, colorDark: "#000", colorLight: "#fff" }, (err) => {
+          if (err) {
+            console.error('二维码生成失败:', err);
+            if (qrError) { qrError.textContent = '二维码生成失败，请重试'; qrError.style.display = 'block'; }
+            return;
+          }
+          if (qrPlaceholder) qrPlaceholder.style.display = 'none';
+          qrCanvas.style.display = 'block';
+        });
+      }
+    } else if (data.needConfig) {
+      // 收钱吧配置未填写
+      if (qrError) {
+        qrError.innerHTML = '⚠️ 收款码功能未配置<br><span style="font-size:12px;color:#999;">请联系店主填写收钱吧密钥</span>';
+        qrError.style.display = 'block';
+      }
+      if (qrPlaceholder) qrPlaceholder.style.display = 'none';
+    } else {
+      // 业务失败
+      if (qrError) {
+        qrError.textContent = '收款码生成失败：' + (data.error || '未知错误');
+        qrError.style.display = 'block';
+      }
+      if (qrPlaceholder) qrPlaceholder.style.display = 'none';
+    }
+  } catch (err) {
+    console.error('预下单请求失败:', err);
+    if (qrError) {
+      qrError.textContent = '网络错误，请检查网络连接后重试';
+      qrError.style.display = 'block';
+    }
+    if (qrPlaceholder) qrPlaceholder.style.display = 'none';
+  }
+}
 
 function confirmPayment() {
   // 停止离开检测
@@ -1442,7 +1530,12 @@ function retryPayment(orderNo) {
 
   // 打开支付页面，重新付款
   document.getElementById('payOrderNo').textContent = orderNo;
-  document.getElementById('payAmount').textContent = `¥${o.total.toFixed(2)}`;
+  // 同步金额到新显示区域
+  const amountStr2 = `¥${o.total.toFixed(2)}`;
+  const payAmountBig2 = document.getElementById('payAmountBig');
+  const payAmountInline2 = document.getElementById('payAmountInline');
+  if (payAmountBig2) payAmountBig2.textContent = amountStr2;
+  if (payAmountInline2) payAmountInline2.textContent = amountStr2;
 
   // 重置勾选状态 + 禁用勾选框（需重新检测跳转）
   const checkbox = document.getElementById('payConfirmCheck');
