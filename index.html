@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>企港渔叔社区海鲜厨房 - 扫码点餐</title>
-<!-- QRCode.js：把支付链接转成二维码图片 -->
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   :root {
@@ -304,6 +302,8 @@
   /* ===== 后台 ===== */
   .admin-page { padding: 12px; min-height: calc(100vh - 130px); position: relative; }
   .admin-section-title { font-size: 16px; font-weight: 700; margin: 16px 0 10px; color: var(--text); display: flex; align-items: center; gap: 6px; }
+  .btn-done-filter { padding:5px 12px;border:1px solid #ddd;border-radius:16px;background:#fff;font-size:12px;color:#666;cursor:pointer;transition:all 0.2s;white-space:nowrap; }
+  .btn-done-filter.active { background:var(--primary);color:#fff;border-color:var(--primary); }
   .order-card {
     background: #fff; border-radius: 12px; padding: 14px; margin-bottom: 10px;
     box-shadow: 0 1px 4px rgba(0,0,0,0.06);
@@ -512,11 +512,37 @@
 
     <!-- 已完成订单（折叠） -->
     <div id="doneOrdersSection" style="margin-bottom:20px;">
-      <div class="admin-section-title" onclick="toggleDoneOrders()" style="cursor:pointer;user-select:none;">
-        📦 已完成订单
-        <span id="doneOrdersArrow" style="font-size:12px;transition:transform 0.2s;display:inline-block;">▶</span>
-        <span id="doneOrdersCount" style="font-size:12px;color:#999;font-weight:normal;"></span>
+      <div class="admin-section-title" onclick="toggleDoneOrders()" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+        <span>
+          📦 已完成订单
+          <span id="doneOrdersArrow" style="font-size:12px;transition:transform 0.2s;display:inline-block;">▶</span>
+          <span id="doneOrdersCount" style="font-size:12px;color:#999;font-weight:normal;"></span>
+        </span>
+        <span id="doneDateStats" style="font-size:11px;color:#888;font-weight:normal;"></span>
       </div>
+
+      <!-- 日期筛选栏（展开后可见） -->
+      <div id="doneFilterBar" style="display:none;padding:10px 0 8px;border-bottom:1px solid #f0f0f0;margin-bottom:10px;">
+        <!-- 快捷日期按钮 -->
+        <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;" id="doneQuickDates">
+          <button onclick="filterDoneByDate('today')" class="btn-done-filter active" data-filter="today">📅 今天</button>
+          <button onclick="filterDoneByDate('yesterday')" class="btn-done-filter" data-filter="yesterday">昨天</button>
+          <button onclick="filterDoneByDate('week')" class="btn-done-filter" data-filter="week">近7天</button>
+          <button onclick="filterDoneByDate('all')" class="btn-done-filter" data-filter="all">全部</button>
+        </div>
+        <!-- 自定义日期选择 -->
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label style="font-size:12px;color:#666;white-space:nowrap;">自定义：</label>
+          <input type="date" id="doneDateFrom" onchange="filterDoneByCustomDate()" style="padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;background:#fafafa;">
+          <span style="color:#ccc;">至</span>
+          <input type="date" id="doneDateTo" onchange="filterDoneByCustomDate()" style="padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;background:#fafafa;">
+          <button onclick="filterDoneByCustomDate()" style="padding:6px 12px;border:none;background:var(--primary);color:#fff;border-radius:6px;font-size:12px;cursor:pointer;">筛选</button>
+        </div>
+      </div>
+
+      <!-- 每日统计汇总 -->
+      <div id="doneDailyStats" style="display:none;padding:10px 14px;background:#f8fafb;border-radius:10px;margin-bottom:10px;font-size:12px;line-height:1.9;"></div>
+
       <div id="doneOrdersList" style="display:none;"></div>
     </div>
 
@@ -600,86 +626,69 @@
 
 <!-- ===== 支付二维码页面 ===== -->
 <div class="pay-page" id="payPage">
-  <h2>📱 扫码付款</h2>
-  <p class="pay-subtitle">使用微信 / 支付宝 / 云闪付扫码</p>
 
-  <!-- 醒目提示横幅 -->
-  <div style="
-    background: linear-gradient(135deg, #fff3cd, #ffe69c);
-    border: 2px solid #f0ad4e;
-    border-radius: 12px;
-    padding: 14px 18px;
-    margin-bottom: 20px;
-    text-align: center;
-    box-shadow: 0 2px 8px rgba(240,173,78,0.3);
-  ">
-    <div style="font-size: 15px; font-weight: 700; color: #856404; margin-bottom: 6px;">
-      ⚠️ 下单流程提示
-    </div>
-    <div style="font-size: 14px; color: #856404; line-height: 1.8;">
-      ① 请先<b>长按识别上方二维码</b>完成付款<br>
-      ② 付款后返回本页，<b>勾选"我已扫码完成付款"</b><br>
-      ③ 点击<b>"提交订单"</b>，订单才生效<br>
-      <span style="font-size: 12px; color: #a08020;">（商家确认收款后才会开始制作，请放心下单）</span>
+  <!-- 顶部：订单号 + 金额 -->
+  <div style="text-align:center;padding-bottom:16px;border-bottom:1px solid #f0f0f0;margin-bottom:20px;">
+    <div style="font-size:12px;color:#999;margin-bottom:4px;">订单编号</div>
+    <div style="font-size:15px;font-weight:600;color:#333;" id="payOrderNo"></div>
+    <div style="margin-top:10px;">
+      <span style="font-size:14px;color:#666;">应付金额</span>
+      <div id="payAmountBig" style="font-size:36px;font-weight:800;color:var(--primary);letter-spacing:-1px;line-height:1;">¥0.00</div>
     </div>
   </div>
 
-  <!-- 超大金额警示 -->
-  <div id="payAmountBanner" style="
-    background: linear-gradient(135deg, #e53935, #ff5252);
-    color: #fff;
+  <!-- 收款码卡片（核心区域） -->
+  <div class="pay-qr-container" style="
+    background: #fff;
     border-radius: 16px;
-    padding: 18px 20px;
-    margin-bottom: 18px;
+    padding: 24px 16px 16px;
     text-align: center;
-    box-shadow: 0 4px 16px rgba(229,57,53,0.35);
-    animation: pulseBanner 2s ease-in-out infinite;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    border: 1px solid #f0f0f0;
+    margin-bottom: 18px;
   ">
-    <div style="font-size:13px;opacity:0.9;margin-bottom:4px;">⚠️ 请支付准确金额</div>
-    <div id="payAmountBig" style="font-size:42px;font-weight:900;letter-spacing:2px;line-height:1.2;">¥0.00</div>
-    <div style="font-size:13px;opacity:0.85;margin-top:6px;">扫码后请输入以上金额，少付或多付都会影响出餐</div>
-  </div>
+    <!-- 二维码 -->
+    <div style="font-size:13px;color:#999;margin-bottom:12px;">长按二维码识别付款</div>
+    <img src="qrcode-pay.jpg" alt="企港渔叔收款码" style="width:260px;max-width:100%;height:auto;border-radius:8px;border:1px solid #eee;display:block;margin:0 auto;">
 
-  <style>
-    @keyframes pulseBanner {
-      0%,100% { box-shadow: 0 4px 16px rgba(229,57,53,0.35); }
-      50% { box-shadow: 0 4px 24px rgba(229,57,53,0.55); }
-    }
-  </style>
-
-  <div class="pay-qr-container">
-    <!-- 动态收款码（金额锁定） -->
-    <div id="qrCodeWrap" style="background:#fff;padding:16px;border-radius:12px;text-align:center;min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;">
-      <canvas id="payQrCanvas" style="display:none;"></canvas>
-      <div id="qrCodePlaceholder" style="color:#999;font-size:14px;">正在生成收款码…</div>
-      <div id="qrCodeError" style="color:#e53935;font-size:13px;display:none;"></div>
+    <!-- 支付方式图标 -->
+    <div style="display:flex;justify-content:center;gap:16px;margin-top:12px;align-items:center;">
+      <span style="font-size:18px;" title="微信支付">💚</span>
+      <span style="font-size:18px;" title="支付宝">💙</span>
+      <span style="font-size:18px;" title="云闪付">🧡</span>
     </div>
-    <ul class="pay-tips">
-      <li>① 长按上方二维码，选择"识别二维码"</li>
-      <li>② 支付页面金额已锁定，<b>无法修改</b></li>
-      <li>③ 完成付款后返回本页，勾选确认并提交</li>
-    </ul>
-  </div>
-  <div class="pay-order-no">订单号：<span id="payOrderNo"></span></div>
 
-  <!-- 勾选确认区域（始终显示） -->
-  <div id="payConfirmArea" style="margin-top:16px;text-align:center;">
+    <!-- 简洁步骤提示 -->
+    <div style="margin-top:16px;background:#fafafa;border-radius:8px;padding:10px 14px;text-align:left;font-size:12px;color:#888;line-height:1.9;">
+      <div>① 长按二维码 → 选择「识别二维码」</div>
+      <div>② 输入金额 <b id="payAmountInline" style="color:var(--primary);">¥0.00</b> → 完成付款</div>
+      <div>③ 返回本页 ↓ 勾选确认提交</div>
+    </div>
+  </div>
+
+  <!-- 勾选 + 提交按钮区域 -->
+  <div id="payConfirmArea" style="background:#f8fbfa;border-radius:14px;padding:18px 16px;text-align:center;border:1px solid #e8f0ec;">
     <label style="display:inline-flex;align-items:center;cursor:pointer;font-size:15px;color:#333;">
-      <input type="checkbox" id="payConfirmCheck" disabled style="width:20px;height:20px;margin-right:10px;accent-color:#07c160;opacity:0.5;cursor:not-allowed;">
-      我已扫码完成付款
+      <input type="checkbox" id="payConfirmCheck" disabled style="width:22px;height:22px;margin-right:10px;accent-color:var(--primary);opacity:0.5;cursor:not-allowed;border-radius:4px;">
+      我已完成付款
     </label>
+
+    <button class="btn-pay-done" id="btnPayDone" onclick="confirmPayment()" disabled style="
+      opacity:0.5;cursor:not-allowed;margin-top:14px;width:100%;border-radius:12px;padding:14px;font-size:16px;font-weight:700;
+      background: linear-gradient(135deg, var(--primary), #06ad56);
+    ">✅ 我已完成付款，等待商家确认</button>
+
+    <div style="margin-top:10px;font-size:11px;color:#aaa;">商家确认收款后才会开始制作</div>
   </div>
 
-  <button class="btn-pay-done" id="btnPayDone" onclick="confirmPayment()" disabled style="opacity:0.5;cursor:not-allowed;margin-top:12px;">✅ 提交订单</button>
-  <div style="margin-top:12px;font-size:12px;color:#999;">💡 提示：请先长按上方二维码付款（会自动跳转微信/支付宝），付完款回来后打勾提交</div>
-  <button style="background:none;border:none;color:#999;font-size:13px;margin-top:12px;cursor:pointer;" onclick="cancelPay()">取消订单</button>
+  <button style="background:none;border:1px solid #ddd;color:#999;font-size:13px;margin-top:14px;padding:8px 24px;border-radius:20px;cursor:pointer;" onclick="cancelPay()">取消订单</button>
 </div>
 
 <!-- ===== 成功页 ===== -->
 <div class="success-page" id="successPage">
   <div class="success-icon">✅</div>
-  <h2>下单成功！</h2>
-  <p>企港渔叔已收到您的订单，正在准备中</p>
+  <h2>订单已提交！</h2>
+  <p>商家正在确认收款，确认后会尽快制作</p>
   <p style="font-size:13px;color:var(--primary);margin-top:8px;">⏰ 下班不用做饭 · 15分钟带走</p>
   <div class="order-no">订单编号：<span id="successOrderNo"></span></div>
   <p style="font-size:12px;color:#aaa;">到店出示此订单号即可取餐</p>
@@ -1101,7 +1110,7 @@ function selectPay(method) {
   });
 }
 
-async function submitOrder() {
+function submitOrder() {
   // 换购品门槛检查：移除不满足门槛的换购品
   enforcePromoRules();
   const phone = document.getElementById('inputPhone').value.trim();
@@ -1137,15 +1146,17 @@ async function submitOrder() {
 
   // 显示支付二维码页面
   document.getElementById('payOrderNo').textContent = orderNo;
-  // 同步金额到新显示区域（超大红色横幅 + 收款码下方）
+  // 同步金额到显示区域
   const amountStr = `¥${total.toFixed(2)}`;
   const payAmountBig = document.getElementById('payAmountBig');
   const payAmountInline = document.getElementById('payAmountInline');
   if (payAmountBig) payAmountBig.textContent = amountStr;
   if (payAmountInline) payAmountInline.textContent = amountStr;
-  // 恢复默认副标题（可能被"打回重付"修改过）
-  const tipsEl = document.querySelector('#payPage .pay-subtitle');
-  if (tipsEl) tipsEl.textContent = '使用微信 / 支付宝 / 云闪付扫码';
+
+  // 重置打回重付的红色边框（如果有）
+  const qrContainer = document.querySelector('#payPage .pay-qr-container');
+  if (qrContainer) qrContainer.style.border = '1px solid #f0f0f0';
+
   document.getElementById('payPage').classList.add('show');
 
   // 重置勾选状态（防止上次的勾选影响本次）
@@ -1154,7 +1165,7 @@ async function submitOrder() {
   // confirmArea 始终可见，重置勾选状态 + 禁用勾选框（需检测到跳转才解锁）
   if (checkbox) { checkbox.checked = false; checkbox.disabled = true; checkbox.style.opacity = '0.5'; checkbox.style.cursor = 'not-allowed'; }
 
-  // 默认禁用"提交订单"按钮（防止乱点）
+  // 默认禁用按钮（防止乱点）
   const btnPayDone = document.getElementById('btnPayDone');
   btnPayDone.disabled = true;
   btnPayDone.style.opacity = '0.5';
@@ -1162,81 +1173,13 @@ async function submitOrder() {
 
   // 启动"离开检测" —— 检测顾客是否跳转去扫码付款
   startPayPageWatch();
-
-  // 【核心】获取动态收款码（金额锁定，防少付）
-  await loadDynamicQrCode(total, orderNo);
-}
-
-
-// ============================================================
-// 动态收款码：调用后端预下单接口，金额锁定防少付
-// ============================================================
-async function loadDynamicQrCode(total, orderNo) {
-  const qrCanvas     = document.getElementById('payQrCanvas');
-  const qrPlaceholder = document.getElementById('qrCodePlaceholder');
-  const qrError      = document.getElementById('qrCodeError');
-
-  // UI：加载中
-  if (qrPlaceholder) qrPlaceholder.style.display = 'block';
-  if (qrCanvas)     qrCanvas.style.display = 'none';
-  if (qrError)      qrError.style.display = 'none';
-
-  try {
-    const res  = await fetch('/api/shoukuanba/precreate', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        totalAmountYuan: Number(total).toFixed(2),
-        clientSn:         orderNo,
-        subject:          '企港渔叔下单',
-        payway:           '3',  // 3=微信，1=支付宝
-      }),
-    });
-    const data = await res.json();
-
-    if (data.success && data.qrCode) {
-      // ✅ 成功：用 QRCode.js 把支付链接转成二维码
-      if (qrCanvas) {
-        QRCode.toCanvas(qrCanvas, data.qrCode, { width: 180, margin: 2, colorDark: "#000", colorLight: "#fff" }, (err) => {
-          if (err) {
-            console.error('二维码生成失败:', err);
-            if (qrError) { qrError.textContent = '二维码生成失败，请重试'; qrError.style.display = 'block'; }
-            return;
-          }
-          if (qrPlaceholder) qrPlaceholder.style.display = 'none';
-          qrCanvas.style.display = 'block';
-        });
-      }
-    } else if (data.needConfig) {
-      // 收钱吧配置未填写
-      if (qrError) {
-        qrError.innerHTML = '⚠️ 收款码功能未配置<br><span style="font-size:12px;color:#999;">请联系店主填写收钱吧密钥</span>';
-        qrError.style.display = 'block';
-      }
-      if (qrPlaceholder) qrPlaceholder.style.display = 'none';
-    } else {
-      // 业务失败
-      if (qrError) {
-        qrError.textContent = '收款码生成失败：' + (data.error || '未知错误');
-        qrError.style.display = 'block';
-      }
-      if (qrPlaceholder) qrPlaceholder.style.display = 'none';
-    }
-  } catch (err) {
-    console.error('预下单请求失败:', err);
-    if (qrError) {
-      qrError.textContent = '网络错误，请检查网络连接后重试';
-      qrError.style.display = 'block';
-    }
-    if (qrPlaceholder) qrPlaceholder.style.display = 'none';
-  }
 }
 
 function confirmPayment() {
   // 停止离开检测
   stopPayPageWatch();
 
-  // 用户点了"我已付款" → 订单状态改为"待确认收款"
+  // 用户点了"我已完成付款" → 订单状态改为"待确认收款"
   const orderNo = document.getElementById('payOrderNo').textContent;
   const o = orders.find(o => o.no === orderNo);
   if (o) {
@@ -1464,7 +1407,7 @@ function _onUserReturnedFromPay() {
     <div class="modal-sheet" style="position:relative;text-align:center;">
       <div style="font-size:40px;margin-bottom:12px;">💳</div>
       <h3 style="font-size:18px;font-weight:700;margin-bottom:8px;">检测到您已操作付款</h3>
-      <p style="font-size:14px;color:#666;margin-bottom:20px;">请勾选"我已扫码完成付款"，再提交订单</p>
+      <p style="font-size:14px;color:#666;margin-bottom:20px;">请勾选"我已完成付款"，再点击"我已完成付款，等待商家确认"</p>
       <button class="btn-submit-order" style="background:linear-gradient(135deg,#07c160,#06ad56);"
         onclick="closeReturnPrompt()">知道了</button>
     </div>
@@ -1541,9 +1484,11 @@ function retryPayment(orderNo) {
   const checkbox = document.getElementById('payConfirmCheck');
   if (checkbox) { checkbox.checked = false; checkbox.disabled = true; checkbox.style.opacity = '0.5'; checkbox.style.cursor = 'not-allowed'; }
 
-  // 修改支付页提示（打回重付专用）
-  const tipsEl = document.querySelector('#payPage .pay-subtitle');
-  if (tipsEl) tipsEl.textContent = '⚠️ 商家已打回，请重新扫码付款';
+  // 打回重付提示（修改收款码卡片标题）
+  const qrContainer = document.querySelector('#payPage .pay-qr-container');
+  if (qrContainer) {
+    qrContainer.style.border = '2px solid #e53935';
+  }
 
   // 切到支付页
   document.getElementById('payPage').classList.add('show');
@@ -1687,29 +1632,54 @@ function checkAdminPassword() {
 }
 
 // ===== 商家后台 =====
-// 已完成订单折叠状态
+// 已完成订单折叠状态 + 日期筛选
 let _doneOrdersExpanded = false;
+let _doneDateFilter = 'today';  // 'today' | 'yesterday' | 'week' | 'all' | 'custom'
+let _doneCustomFrom = '';
+let _doneCustomTo = '';
 
 function toggleDoneOrders() {
   _doneOrdersExpanded = !_doneOrdersExpanded;
   const list = document.getElementById('doneOrdersList');
+  const filterBar = document.getElementById('doneFilterBar');
+  const dailyStats = document.getElementById('doneDailyStats');
   const arrow = document.getElementById('doneOrdersArrow');
   if (list) list.style.display = _doneOrdersExpanded ? 'block' : 'none';
+  if (filterBar) filterBar.style.display = _doneOrdersExpanded ? 'block' : 'none';
+  // 每日统计在展开且有数据时才显示
+  if (dailyStats) dailyStats.style.display = (_doneOrdersExpanded && dailyStats.innerHTML) ? 'block' : 'none';
   if (arrow) arrow.style.transform = _doneOrdersExpanded ? 'rotate(90deg)' : 'rotate(0deg)';
+  // 展开时渲染已完成订单（含日期筛选）
+  if (_doneOrdersExpanded) renderDoneOrders();
 }
 
 function renderAdminOrders() {
   const activeList = document.getElementById('adminOrderList');
-  const doneList = document.getElementById('doneOrdersList');
   const doneCountEl = document.getElementById('doneOrdersCount');
+  const doneDateStatsEl = document.getElementById('doneDateStats');
   if (!activeList) return;
 
   // 分离进行中和已完成的订单
   const activeOrders = orders.filter(o => !['done','cancelled','rejected'].includes(o.status));
   const doneOrders = orders.filter(o => ['done','cancelled','rejected'].includes(o.status));
 
-  // 更新已完成数量
-  if (doneCountEl) doneCountEl.textContent = doneOrders.length > 0 ? `(${doneOrders.length}条)` : '';
+  // 更新已完成数量（标题旁显示总数 + 今日完成数）
+  if (doneCountEl) {
+    const todayDone = doneOrders.filter(o => {
+      if (!o.time) return false;
+      return o.time.includes(new Date().toLocaleDateString('zh-CN'));
+    }).length;
+    doneCountEl.textContent = doneOrders.length > 0 ? `(${doneOrders.length}条)` : '';
+  }
+  // 标题旁显示今日完成统计
+  if (doneDateStatsEl) {
+    const todayStr = new Date().toISOString().slice(0,10);
+    const todaysDone = orders.filter(o => o.status === 'done' && o.doneDate === todayStr);
+    const todaysTotal = orders.filter(o => ['done','cancelled','rejected'].includes(o.status) && o.time && o.time.includes(todayStr.replace(/-/g,'/').slice(5)));
+    // 用 doneDate 字段更准确
+    const todayDoneCount = orders.filter(o => o.doneDate === todayStr).length;
+    doneDateStatsEl.textContent = todayDoneCount > 0 ? `· 今日完成${todayDoneCount}单` : '';
+  }
 
   // 渲染进行中订单
   if (activeOrders.length === 0) {
@@ -1718,13 +1688,166 @@ function renderAdminOrders() {
     activeList.innerHTML = activeOrders.map(o => buildOrderCard(o)).join('');
   }
 
-  // 渲染已完成订单
-  if (doneList) {
-    if (doneOrders.length === 0) {
-      doneList.innerHTML = '<div class="empty-hint">暂无已完成订单</div>';
-    } else {
-      doneList.innerHTML = doneOrders.map(o => buildOrderCard(o)).join('');
-    }
+  // 已完成订单由 renderDoneOrders() 独立渲染（带日期筛选）
+  if (_doneOrdersExpanded) renderDoneOrders();
+}
+
+// ============================================================
+// 已完成订单：日期筛选 + 每日统计 + 渲染
+// ============================================================
+
+// 从订单 time 字段提取日期（兼容 "2026/6/21 11:25:44" 格式）
+function getOrderDate(o) {
+  if (!o || !o.time) return '';
+  // 尝试解析 "YYYY/M/D H:M:S" 或 "YYYY-M-D ..."
+  const match = o.time.match(/(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+  if (!match) return '';
+  const y = match[1], m = String(match[2]).padStart(2,'0'), d = String(match[3]).padStart(2,'0');
+  return `${y}-${m}-${d}`;
+}
+
+// 根据当前筛选条件过滤已完成订单
+function getFilteredDoneOrders() {
+  let doneOrders = orders.filter(o => ['done','cancelled','rejected'].includes(o.status));
+  const now = new Date();
+  const today = now.toISOString().slice(0,10);
+
+  if (_doneDateFilter === 'today') {
+    doneOrders = doneOrders.filter(o => getOrderDate(o) === today);
+  } else if (_doneDateFilter === 'yesterday') {
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yStr = yesterday.toISOString().slice(0,10);
+    doneOrders = doneOrders.filter(o => getOrderDate(o) === yStr);
+  } else if (_doneDateFilter === 'week') {
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const wStr = weekAgo.toISOString().slice(0,10);
+    doneOrders = doneOrders.filter(o => getOrderDate(o) >= wStr);
+  } else if (_doneDateFilter === 'custom' && _doneCustomFrom && _doneCustomTo) {
+    doneOrders = doneOrders.filter(o => {
+      const d = getOrderDate(o);
+      return d >= _doneCustomFrom && d <= _doneCustomTo;
+    });
+  }
+  // 'all' 不筛选
+
+  return doneOrders;
+}
+
+// 渲染已完成订单（含每日统计汇总）
+function renderDoneOrders() {
+  const doneList = document.getElementById('doneOrdersList');
+  const dailyStatsEl = document.getElementById('doneDailyStats');
+  if (!doneList) return;
+
+  const filtered = getFilteredDoneOrders();
+
+  // 按日期分组统计
+  const byDate = {};
+  filtered.forEach(o => {
+    const d = getOrderDate(o) || '未知';
+    if (!byDate[d]) byDate[d] = { count: 0, total: 0, doneCount: 0, list: [] };
+    byDate[d].count++;
+    byDate[d].total += (o.total || 0);
+    if (o.status === 'done') byDate[d].doneCount++;
+    byDate[d].list.push(o);
+  });
+
+  // 按日期降序排列
+  const sortedDates = Object.keys(byDate).sort().reverse();
+
+  // 渲染每日统计
+  if (dailyStatsEl && sortedDates.length > 0) {
+    let statsHtml = `<div style="font-weight:600;color:#333;margin-bottom:4px;">📊 筛选结果：共 ${filtered.length} 单</div>`;
+    sortedDates.forEach(d => {
+      const info = byDate[d];
+      const dateLabel = formatDisplayDate(d);
+      statsHtml += `
+        <div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid #f0f0f0;">
+          <span>${dateLabel}</span>
+          <span style="color:#666;">${info.count}单 · 完成<span style="color:var(--primary);font-weight:600;">${info.doneCount}</span>单 · ¥${info.total.toFixed(2)}</span>
+        </div>`;
+    });
+    dailyStatsEl.innerHTML = statsHtml;
+    dailyStatsEl.style.display = 'block';
+  } else if (dailyStatsEl) {
+    dailyStatsEl.innerHTML = '';
+    dailyStatsEl.style.display = 'none';
+  }
+
+  // 渲染订单列表（按日期分组展示）
+  if (filtered.length === 0) {
+    doneList.innerHTML = '<div class="empty-hint">该时间范围内暂无订单</div>';
+    return;
+  }
+
+  let html = '';
+  sortedDates.forEach(d => {
+    const info = byDate[d];
+    const dateLabel = formatDisplayDate(d);
+    // 日期分组标题
+    html += `<div style="font-size:13px;font-weight:700;color:#555;padding:12px 0 6px;border-bottom:2px solid #f0f0f0;margin-top:4px;">
+      📅 ${dateLabel}
+      <span style="font-size:11px;font-weight:normal;color:#999;margin-left:6px;">(${info.count}单 · ¥${info.total.toFixed(2)})</span>
+    </div>`;
+    // 该日订单
+    html += info.list.map(o => buildOrderCard(o)).join('');
+  });
+  doneList.innerHTML = html;
+}
+
+// 格式化显示日期 "2026-06-21" → "今天" / "06-21（周六）"
+function formatDisplayDate(dateStr) {
+  if (!dateStr) return '未知';
+  const today = new Date().toISOString().slice(0,10);
+  const yesterday = (() => { const d=new Date();d.setDate(d.getDate()-1);return d.toISOString().slice(0,10); })();
+
+  if (dateStr === today) return '📅 今天';
+  if (dateStr === yesterday) return '📅 昨天';
+
+  // 显示 MM-DD + 星期几
+  const [y,m,d] = dateStr.split('-');
+  const weekdays = ['周日','周一','周二','周三','周四','周五','周六'];
+  const dt = new Date(parseInt(y), parseInt(m)-1, parseInt(d));
+  const wday = weekdays[dt.getDay()];
+  return `${parseInt(m)}月${parseInt(d)}日（${wday}）`;
+}
+
+// 快捷日期按钮点击
+function filterDoneByDate(filter) {
+  _doneDateFilter = filter;
+  // 更新按钮高亮
+  document.querySelectorAll('#doneQuickDates .btn-done-filter').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.filter === filter);
+  });
+  // 清空自定义日期
+  if (filter !== 'custom') {
+    const fromEl = document.getElementById('doneDateFrom');
+    const toEl = document.getElementById('doneDateTo');
+    if (fromEl) fromEl.value = '';
+    if (toEl) toEl.value = '';
+    _doneCustomFrom = '';
+    _doneCustomTo = '';
+  }
+  renderDoneOrders();
+}
+
+// 自定义日期筛选
+function filterDoneByCustomDate() {
+  const fromEl = document.getElementById('doneDateFrom');
+  const toEl = document.getElementById('doneDateTo');
+  if (!fromEl || !toEl) return;
+  if (fromEl.value && toEl.value) {
+    _doneDateFilter = 'custom';
+    _doneCustomFrom = fromEl.value;
+    _doneCustomTo = toEl.value;
+    // 取消快捷按钮高亮
+    document.querySelectorAll('#doneQuickDates .btn-done-filter').forEach(b => b.classList.remove('active'));
+    renderDoneOrders();
+  } else if (!fromEl.value && !toEl.value) {
+    // 都空了，切回全部
+    filterDoneByDate('all');
   }
 }
 
