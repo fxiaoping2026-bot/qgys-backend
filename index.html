@@ -1586,11 +1586,6 @@ async function doLookupOrder() {
 
 // ===== 页面切换 =====
 function switchPage(page) {
-  // 如果当前在商家后台，且要切换到其他页面 → 二次确认
-  const currentPageEl = document.querySelector('.page.active');
-  if (currentPageEl && currentPageEl.id === 'page-admin' && page !== 'admin') {
-    if (!confirm('确定要退出商家后台吗？')) return;
-  }
   // 商家后台需要密码验证（除非已通过验证或 session 内已认证）
   if (page === 'admin' && !_adminAuthPassed) {
     showAdminPwdModal();
@@ -1619,38 +1614,37 @@ try {
   }
 } catch(e) {}
 
-// 离开页面前提醒（防止误操作刷新/关闭）
+// 离开页面前提醒（顾客端：防止误关丢失购物车/订单）
 window.addEventListener('beforeunload', function(e) {
-  if (document.querySelector('#page-admin')?.classList.contains('active')) {
+  // 购物车有东西 或 有未完成订单 → 提醒不要误关
+  const hasCart = Object.keys(cart).length > 0;
+  const hasPendingOrders = orders.some(o => ['pending','making','new','retry'].includes(o.status));
+  if (hasCart || hasPendingOrders) {
     e.preventDefault();
-    e.returnValue = '确定要离开商家后台吗？';
-    return '确定要离开商家后台吗？';
+    e.returnValue = '您有未完成的点餐，确定要离开吗？';
+    return '您有未完成的点餐，确定要离开吗？';
   }
 });
 
-// 阻止微信浏览器手势返回误退出（后台页面时多push一个history state）
+// 阻止微信浏览器手势返回误退出（全局保护）
 (function() {
   let _backProtected = false;
-  function protectBack() {
-    if (document.querySelector('#page-admin')?.classList.contains('active')) {
-      if (!_backProtected) {
-        history.pushState(null, null, location.href);
-        _backProtected = true;
-      }
-    } else {
-      _backProtected = false;
-    }
-  }
-  // 后台页面显示时 push state
-  const observer = new MutationObserver(protectBack);
-  const adminPage = document.getElementById('page-admin');
-  if (adminPage) observer.observe(adminPage, { attributes: true, attributeFilter: ['class'] });
+  // 始终 push 一个 state，让返回键先拦截
+  history.pushState(null, null, location.href);
+  _backProtected = true;
+
   window.addEventListener('popstate', function(e) {
-    if (document.querySelector('#page-admin')?.classList.contains('active')) {
-      const confirmed = confirm('确定要退出商家后台吗？');
+    const hasCart = Object.keys(cart).length > 0;
+    const hasPendingOrders = orders.some(o => ['pending','making','new','retry'].includes(o.status));
+    if (hasCart || hasPendingOrders) {
+      const confirmed = confirm('您有未完成的点餐，确定要退出吗？\n\n（购物车或进行中的订单会丢失）');
       if (!confirmed) {
         history.pushState(null, null, location.href);
       }
+      // 用户确认 → 自然返回上一页
+    } else {
+      // 没有未完成内容 → 允许返回
+      history.pushState(null, null, location.href);
     }
   });
 })();
