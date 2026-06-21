@@ -1616,37 +1616,26 @@ try {
   }
 } catch(e) {}
 
-// 离开页面前提醒（顾客端：防止误关丢失购物车/订单）
+// 离开页面前提醒（顾客端：防止误关，无论购物车是否有东西）
 window.addEventListener('beforeunload', function(e) {
-  // 购物车有东西 或 有未完成订单 → 提醒不要误关
-  const hasCart = Object.keys(cart).length > 0;
-  const hasPendingOrders = orders.some(o => ['pending','confirmed','making','new','retry'].includes(o.status));
-  if (hasCart || hasPendingOrders) {
-    e.preventDefault();
-    e.returnValue = '您有未完成的点餐，确定要离开吗？';
-    return '您有未完成的点餐，确定要离开吗？';
-  }
+  // 始终提醒，防止误关页面需要重新扫码
+  e.preventDefault();
+  e.returnValue = '确定要退出点餐页面吗？';
+  return '确定要退出点餐页面吗？';
 });
 
 // 阻止微信浏览器手势返回误退出（全局保护）
 (function() {
-  let _backProtected = false;
-  // 始终 push 一个 state，让返回键先拦截
+  let _allowBack = false; // 标记用户已确认退出，不再拦截
   history.pushState(null, null, location.href);
-  _backProtected = true;
-
   window.addEventListener('popstate', function(e) {
-    const hasCart = Object.keys(cart).length > 0;
-    const hasPendingOrders = orders.some(o => ['pending','confirmed','making','new','retry'].includes(o.status));
-    if (hasCart || hasPendingOrders) {
-      const confirmed = confirm('您有未完成的点餐，确定要退出吗？\n\n（购物车或进行中的订单会丢失）');
-      if (!confirmed) {
-        history.pushState(null, null, location.href);
-      }
-      // 用户确认 → 自然返回上一页
-    } else {
-      // 没有未完成内容 → 允许返回
+    if (_allowBack) return;
+    const confirmed = confirm('确定要退出点餐页面吗？');
+    if (!confirmed) {
       history.pushState(null, null, location.href);
+    } else {
+      _allowBack = true;
+      history.back();
     }
   });
 })();
