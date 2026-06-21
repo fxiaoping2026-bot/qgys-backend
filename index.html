@@ -506,9 +506,21 @@
       </div>
     </div>
 
-    <div class="admin-section-title">📋 实时订单</div>
-    <div id="adminOrderList"></div>
-    <div style="font-size:11px;color:#aaa;margin-bottom:14px;text-align:center;">💡 下拉页面即可刷新订单</div>
+    <!-- 实时订单（可收缩） -->
+    <div id="activeOrdersSection" style="margin-bottom:20px;">
+      <div class="admin-section-title" onclick="toggleActiveOrders()" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+        <span>
+          📋 实时订单
+          <span id="activeOrdersArrow" style="font-size:12px;transition:transform 0.2s;display:inline-block;transform:rotate(90deg);">▶</span>
+          <span id="activeOrdersCount" style="font-size:12px;color:#999;font-weight:normal;"></span>
+        </span>
+        <span id="activeOrdersStats" style="font-size:11px;color:#888;font-weight:normal;"></span>
+      </div>
+      <div id="activeOrdersBody">
+        <div id="adminOrderList"></div>
+        <div style="font-size:11px;color:#aaa;margin-bottom:14px;text-align:center;">💡 下拉页面即可刷新订单</div>
+      </div>
+    </div>
 
     <!-- 已完成订单（折叠） -->
     <div id="doneOrdersSection" style="margin-bottom:20px;">
@@ -546,15 +558,26 @@
       <div id="doneOrdersList" style="display:none;"></div>
     </div>
 
-    <div class="admin-section-title">🥘 菜单管理</div>
-    <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-      <button class="btn-sync" onclick="doSyncToFeishu()" style="background:#e8f5e9;color:#2e7d32;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;">📤 同步到飞书</button>
-      <button class="btn-sync" onclick="doLoadFromFeishu()" style="background:#e3f2fd;color:#1565c0;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;">📥 从飞书加载</button>
-      <button class="btn-sync" onclick="showApiSettings()" style="background:#fff3e0;color:#e65100;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;">⚙️ 后端设置</button>
-      <span id="syncStatus" style="font-size:12px;color:#888;line-height:32px;"></span>
+    <!-- 菜单管理（可收缩） -->
+    <div id="menuManageSection" style="margin-bottom:20px;">
+      <div class="admin-section-title" onclick="toggleMenuManage()" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;">
+        <span>
+          🥘 菜单管理
+          <span id="menuManageArrow" style="font-size:12px;transition:transform 0.2s;display:inline-block;transform:rotate(90deg);">▶</span>
+          <span id="menuManageCount" style="font-size:12px;color:#999;font-weight:normal;"></span>
+        </span>
+      </div>
+      <div id="menuManageBody">
+        <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+          <button class="btn-sync" onclick="doSyncToFeishu()" style="background:#e8f5e9;color:#2e7d32;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;">📤 同步到飞书</button>
+          <button class="btn-sync" onclick="doLoadFromFeishu()" style="background:#e3f2fd;color:#1565c0;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;">📥 从飞书加载</button>
+          <button class="btn-sync" onclick="showApiSettings()" style="background:#fff3e0;color:#e65100;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;">⚙️ 后端设置</button>
+          <span id="syncStatus" style="font-size:12px;color:#888;line-height:32px;"></span>
+        </div>
+        <div id="adminMenuList"></div>
+        <button class="btn-add-item" onclick="showAddItemModal()">＋ 添加新菜品</button>
+      </div>
     </div>
-    <div id="adminMenuList"></div>
-    <button class="btn-add-item" onclick="showAddItemModal()">＋ 添加新菜品</button>
 
     <div class="admin-section-title">📱 点餐二维码</div>
     <div style="display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;">
@@ -1563,7 +1586,12 @@ async function doLookupOrder() {
 
 // ===== 页面切换 =====
 function switchPage(page) {
-  // 商家后台需要密码验证（除非已通过验证）
+  // 如果当前在商家后台，且要切换到其他页面 → 二次确认
+  const currentPageEl = document.querySelector('.page.active');
+  if (currentPageEl && currentPageEl.id === 'page-admin' && page !== 'admin') {
+    if (!confirm('确定要退出商家后台吗？')) return;
+  }
+  // 商家后台需要密码验证（除非已通过验证或 session 内已认证）
   if (page === 'admin' && !_adminAuthPassed) {
     showAdminPwdModal();
     return;
@@ -1583,6 +1611,49 @@ const ADMIN_PASSWORD = 'qgys888';  // 商家密码，可自行修改
 let _adminAuthPassed = false;      // 是否已通过验证
 let _adminTapCount = 0;            // 连续点击店名次数（隐藏入口）
 let _adminTapTimer = null;
+
+// 从 sessionStorage 恢复登录状态（同一标签页内切换页面不需要重新输密码）
+try {
+  if (sessionStorage.getItem('adminAuth') === '1') {
+    _adminAuthPassed = true;
+  }
+} catch(e) {}
+
+// 离开页面前提醒（防止误操作刷新/关闭）
+window.addEventListener('beforeunload', function(e) {
+  if (document.querySelector('#page-admin')?.classList.contains('active')) {
+    e.preventDefault();
+    e.returnValue = '确定要离开商家后台吗？';
+    return '确定要离开商家后台吗？';
+  }
+});
+
+// 阻止微信浏览器手势返回误退出（后台页面时多push一个history state）
+(function() {
+  let _backProtected = false;
+  function protectBack() {
+    if (document.querySelector('#page-admin')?.classList.contains('active')) {
+      if (!_backProtected) {
+        history.pushState(null, null, location.href);
+        _backProtected = true;
+      }
+    } else {
+      _backProtected = false;
+    }
+  }
+  // 后台页面显示时 push state
+  const observer = new MutationObserver(protectBack);
+  const adminPage = document.getElementById('page-admin');
+  if (adminPage) observer.observe(adminPage, { attributes: true, attributeFilter: ['class'] });
+  window.addEventListener('popstate', function(e) {
+    if (document.querySelector('#page-admin')?.classList.contains('active')) {
+      const confirmed = confirm('确定要退出商家后台吗？');
+      if (!confirmed) {
+        history.pushState(null, null, location.href);
+      }
+    }
+  });
+})();
 
 // 连续点击店名5次 → 显示商家后台标签
 function setupAdminSecretEntry() {
@@ -1617,6 +1688,8 @@ function checkAdminPassword() {
   const input = document.getElementById('adminPwdInput').value;
   if (input === ADMIN_PASSWORD) {
     _adminAuthPassed = true;
+    // sessionStorage 记住登录状态（同一标签页内切换页面不需要重新输密码）
+    try { sessionStorage.setItem('adminAuth', '1'); } catch(e) {}
     closeAdminPwdModal();
     // 切换到商家标签栏并进入后台
     document.getElementById('customerTabs').style.display = 'none';
@@ -1679,6 +1752,21 @@ function renderAdminOrders() {
     // 用 doneDate 字段更准确
     const todayDoneCount = orders.filter(o => o.doneDate === todayStr).length;
     doneDateStatsEl.textContent = todayDoneCount > 0 ? `· 今日完成${todayDoneCount}单` : '';
+  }
+
+  // 更新实时订单标题旁计数
+  const activeCountEl = document.getElementById('activeOrdersCount');
+  const activeStatsEl = document.getElementById('activeOrdersStats');
+  if (activeCountEl) {
+    activeCountEl.textContent = activeOrders.length > 0 ? `(${activeOrders.length}条)` : '';
+  }
+  if (activeStatsEl) {
+    const pendingCount = activeOrders.filter(o => o.status === 'pending' || o.status === 'retry').length;
+    const makingCount = activeOrders.filter(o => o.status === 'making' || o.status === 'new').length;
+    let statsText = '';
+    if (pendingCount > 0) statsText += `待确认${pendingCount} `;
+    if (makingCount > 0) statsText += `制作中${makingCount}`;
+    activeStatsEl.textContent = statsText;
   }
 
   // 渲染进行中订单
@@ -1851,6 +1939,32 @@ function filterDoneByCustomDate() {
   }
 }
 
+// ============================================================
+// 实时订单：可收缩
+// ============================================================
+let _activeOrdersExpanded = true;  // 默认展开
+
+function toggleActiveOrders() {
+  _activeOrdersExpanded = !_activeOrdersExpanded;
+  const body = document.getElementById('activeOrdersBody');
+  const arrow = document.getElementById('activeOrdersArrow');
+  if (body) body.style.display = _activeOrdersExpanded ? 'block' : 'none';
+  if (arrow) arrow.style.transform = _activeOrdersExpanded ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
+// ============================================================
+// 菜单管理：可收缩
+// ============================================================
+let _menuManageExpanded = true;  // 默认展开
+
+function toggleMenuManage() {
+  _menuManageExpanded = !_menuManageExpanded;
+  const body = document.getElementById('menuManageBody');
+  const arrow = document.getElementById('menuManageArrow');
+  if (body) body.style.display = _menuManageExpanded ? 'block' : 'none';
+  if (arrow) arrow.style.transform = _menuManageExpanded ? 'rotate(90deg)' : 'rotate(0deg)';
+}
+
 // 生成单个订单卡片 HTML
 function buildOrderCard(o) {
   let statusClass = '', statusText = '';
@@ -1913,6 +2027,15 @@ function toggleOrderCard(orderNo) {
 function renderAdminMenu() {
   const list = document.getElementById('adminMenuList');
   if (!list) return;
+
+  // 更新菜单管理标题旁计数
+  const menuCountEl = document.getElementById('menuManageCount');
+  if (menuCountEl) {
+    const totalItems = menuData.reduce((sum, cat) => sum + cat.items.length, 0);
+    const totalCats = menuData.length;
+    menuCountEl.textContent = `(${totalCats}类 · ${totalItems}道菜)`;
+  }
+
   list.innerHTML = menuData.map((cat, ci) => `
     <div style="margin-bottom:16px;">
       <div style="font-size:14px;font-weight:700;color:#666;margin-bottom:8px;padding-left:4px;">${cat.icon} ${cat.name}</div>
