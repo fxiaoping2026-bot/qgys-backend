@@ -30,6 +30,7 @@ const FIELDS = {
   emoji:       '表情',      // 单选
   tags:        '标签',      // 多选
   available:   '上架状态',  // 单行文本，"TRUE"=上架
+  minOrderAmount: '换购门槛(元)', // 数字（换购品最低订单金额）
 };
 
 // 中间件
@@ -392,24 +393,40 @@ function convertFeishuToMenu(records) {
   }
 
   // 转为 menuData 格式（与 H5 index.html 的 menuData 结构一致）
+  // 换购品识别：名称含"换购"或 desc 含"满"+"元" → 自动补 minOrderAmount
+  function isPromoItem(name, desc) {
+    if (name && name.includes('换购')) return true;
+    if (desc && (desc.includes('换购') || /满\s*\d+\s*元/.test(desc))) return true;
+    return false;
+  }
   const iconMap = { '招牌生蚝': '🦪', '海鲜小炒': '🍳', '主食': '🍚', '酒水饮料': '🥤', '未分类': '📋' };
-  return Object.entries(catMap).map(([name, items], idx) => ({
+  const menuData = Object.entries(catMap).map(([name, items], idx) => ({
     id: `c${idx + 1}`,
     name,
     icon: iconMap[name] || '📋',
-    items: items.map((item, i) => ({
-      // 保留 _recordId 以便后续同步匹配
-      _fid: item._recordId,
-      id: `i${idx * 100 + i + 1}`,
-      name: item.name,
-      desc: item.desc,
-      price: item.price,
-      unit: item.unit,
-      emoji: item.emoji || '🍽',
-      tags: item.tags,
-      available: item.available,
-    })),
+    items: items.map((item, i) => {
+      const base = {
+        // 保留 _recordId 以便后续同步匹配
+        _fid: item._recordId,
+        id: `i${idx * 100 + i + 1}`,
+        name: item.name,
+        desc: item.desc,
+        price: item.price,
+        unit: item.unit,
+        emoji: item.emoji || '🍽',
+        tags: item.tags,
+        available: item.available,
+      };
+      // 识别换购品，补上 minOrderAmount（优先用飞书字段，否则自动识别）
+      if (item.minOrderAmount && item.minOrderAmount > 0) {
+        base.minOrderAmount = item.minOrderAmount;
+      } else if (isPromoItem(item.name, item.desc)) {
+        base.minOrderAmount = 39;
+      }
+      return base;
+    }),
   }));
+  return menuData;
 }
 
 // ============================================================
@@ -468,6 +485,15 @@ function buildFeishuRecord(item) {
   if (item.tags && item.tags.length > 0) fields[FIELDS.tags] = item.tags;
   // 上架状态：文本字段，"TRUE" = 上架，空字符串 = 下架
   fields[FIELDS.available] = item.available ? 'TRUE' : '';
+  // 换购门槛：数字字段，识别为换购品但无字段时默认 39
+  if (item.minOrderAmount && item.minOrderAmount > 0) {
+    fields[FIELDS.minOrderAmount] = item.minOrderAmount;
+  } else if (
+    (item.name && item.name.includes('换购')) ||
+    (item.desc && (item.desc.includes('换购') || /满\s*\d+\s*元/.test(item.desc)))
+  ) {
+    fields[FIELDS.minOrderAmount] = 39;
+  }
   return fields;
 }
 
