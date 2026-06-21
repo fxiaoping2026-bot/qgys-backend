@@ -389,6 +389,7 @@ function convertFeishuToMenu(records) {
       emoji: f[FIELDS.emoji] || '🍽',
       tags,
       available,
+      minOrderAmount: Number(f[FIELDS.minOrderAmount]) || 0,  // 直接从飞书读取换购门槛
     });
   }
 
