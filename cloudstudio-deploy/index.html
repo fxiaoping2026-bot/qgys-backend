@@ -1552,6 +1552,9 @@ async function doLookupOrder() {
     return;
   }
 
+  // 最新订单排在最前面
+  matched.sort(function(a, b) { return (b.time || '').localeCompare(a.time || ''); });
+
   // 状态映射
   const statusMap = {
     'pending':  { text: '待确认收款', color: '#856404', bg: '#fff3cd' },
@@ -1717,9 +1720,10 @@ function renderAdminOrders() {
   const doneDateStatsEl = document.getElementById('doneDateStats');
   if (!activeList) return;
 
-  // 分离进行中和已完成的订单
-  const activeOrders = orders.filter(o => !['done','cancelled','rejected'].includes(o.status));
-  const doneOrders = orders.filter(o => ['done','cancelled','rejected'].includes(o.status));
+  // 分离进行中和已完成的订单（最新订单排在最前面）
+  const activeOrders = orders.filter(o => !['done','cancelled','rejected'].includes(o.status))
+    .sort(function(a, b) { return (b.time || '').localeCompare(a.time || ''); });
+  const doneOrders = orders.filter(o => ['done','cancelled','rejected'].includes(o.status))
 
   // 更新已完成数量（标题旁显示总数 + 今日完成数）
   if (doneCountEl) {
@@ -1866,8 +1870,8 @@ function renderDoneOrders() {
       📅 ${dateLabel}
       <span style="font-size:11px;font-weight:normal;color:#999;margin-left:6px;">(${info.count}单 · ¥${info.total.toFixed(2)})</span>
     </div>`;
-    // 该日订单
-    html += info.list.map(o => buildOrderCard(o)).join('');
+    // 该日订单（最新排在最前面）
+    html += info.list.sort(function(a, b) { return (b.time || '').localeCompare(a.time || ''); }).map(o => buildOrderCard(o)).join('');
   });
   doneList.innerHTML = html;
 }
