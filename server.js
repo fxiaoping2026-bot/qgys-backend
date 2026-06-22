@@ -649,6 +649,180 @@ app.post('/api/shoukuanba/query', async (req, res) => {
 });
 
 // ============================================================
+// 用户行为追踪系统
+// ============================================================
+const sqlite3 = require('sqlite3').verbose();
+const DB_PATH = path.join(__dirname, 'analytics.db');
+
+// 初始化数据库
+const db = new sqlite3.Database(DB_PATH, (err) => {
+  if (err) {
+    console.error('❌ 数据库连接失败:', err);
+  } else {
+    console.log('✅ 用户行为数据库已连接');
+  }
+});
+
+// 创建追踪事件表
+db.run(`
+  CREATE TABLE IF NOT EXISTS track_events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id TEXT NOT NULL,
+    event_type TEXT NOT NULL,
+    event_data TEXT,
+    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+  )
+`, (err) => {
+  if (err) {
+    console.error('❌ 创建追踪表失败:', err);
+  } else {
+    console.log('✅ 追踪事件表已就绪');
+  }
+});
+
+// 创建索引（加速查询）
+db.run(`CREATE INDEX IF NOT EXISTS idx_user_id ON track_events(user_id)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_event_type ON track_events(event_type)`, () => {});
+db.run(`CREATE INDEX IF NOT EXISTS idx_timestamp ON track_events(timestamp)`, () => {});
+
+// 接收追踪事件
+app.post('/api/track', (req, res) => {
+  const { userId, eventType, eventData } = req.body;
+
+  if (!userId || !eventType) {
+    return res.status(400).json({ error: '缺少必需参数' });
+  }
+
+  const data = eventData ? JSON.stringify(eventData) : null;
+
+  db.run(
+    'INSERT INTO track_events (user_id, event_type, event_data) VALUES (?, ?, ?)',
+    [userId, eventType, data],
+    function(err) {
+      if (err) {
+        console.error('❌ 追踪事件存储失败:', err);
+        return res.status(500).json({ error: '存储失败' });
+      }
+      res.json({ success: true, id: this.lastID });
+    }
+  );
+});
+
+// 获取统计数据（商家后台用）
+app.get('/api/analytics', (req, res) => {
+  // 获取今日数据
+  const today = new Date().toISOString().split('T')[0];
+
+  db.all(`
+    SELECT
+      event_type,
+      COUNT(DISTINCT user_id) as user_count,
+      COUNT(*) as event_count
+    FROM track_events
+    WHERE DATE(timestamp) = ?
+    GROUP BY event_type
+  `, [today], (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: '查询失败' });
+    }
+
+    // 计算转化率
+    const stats = {};
+    rows.forEach(row => {
+      stats[row.event_type] = {
+        users: row.user_count,
+        events: row.event_count
+      };
+    });
+
+    // 获取总用户数
+    db.get(`SELECT COUNT(DISTINCT user_id) as total_users FROM track_events`, [], (err, result) => {
+      if (err) {
+        return res.status(500).json({ error: '查询失败' });
+      }
+
+      // 获取复购用户数（下单超过1次的用户）
+      db.all(`
+        SELECT user_id, COUNT(DISTINCT DATE(timestamp)) as order_days
+        FROM track_events
+        WHERE event_type = 'submit_order'
+        GROUP BY user_id
+        HAVING order_days > 1
+      `, [], (err, repeatUsers) => {
+        if (err) {
+          return res.status(500).json({ error: '查询失败' });
+        }
+
+        res.json({
+          date: today,
+          totalUsers: result.total_users || 0,
+          repeatUsers: repeatUsers.length,
+          events: stats,
+          conversionRate: stats.page_view && stats.submit_order
+            ? (stats.submit_order.users / stats.page_view.users * 100).toFixed(2) + '%'
+            : '0%'
+        });
+      });
+    });
+  });
+});
+
+// 获取详细统计数据
+app.get('/api/analytics/detail', (req, res) => {
+  const { startDate, endDate } = req.query;
+
+  let dateFilter = '';
+  let params = [];
+
+  if (startDate && endDate) {
+    dateFilter = 'WHERE DATE(timestamp) BETWEEN ? AND ?';
+    params = [startDate, endDate];
+  } else if (startDate) {
+    dateFilter = 'WHERE DATE(timestamp) >= ?';
+    params = [startDate];
+  }
+
+  // 每日统计
+  db.all(`
+    SELECT
+      DATE(timestamp) as date,
+      event_type,
+      COUNT(DISTINCT user_id) as user_count,
+      COUNT(*) as event_count
+    FROM track_events
+    ${dateFilter}
+    GROUP BY DATE(timestamp), event_type
+    ORDER BY date DESC
+  `, params, (err, rows) => {
+    if (err) {
+      return res.status(500).json({ error: '查询失败' });
+    }
+
+    // 热门菜品统计
+    db.all(`
+      SELECT
+        json_extract(event_data, '$.itemName') as item_name,
+        COUNT(*) as view_count,
+        COUNT(DISTINCT user_id) as user_count
+      FROM track_events
+      WHERE event_type = 'item_view' ${startDate ? 'AND DATE(timestamp) >= ?' : ''}
+      GROUP BY item_name
+      ORDER BY view_count DESC
+      LIMIT 20
+    `, startDate ? [startDate] : [], (err, hotItems) => {
+      if (err) {
+        return res.status(500).json({ error: '查询失败' });
+      }
+
+      res.json({
+        dailyStats: rows,
+        hotItems: hotItems
+      });
+    });
+  });
+});
+
+// ============================================================
 // 启动服务
 // ============================================================
 app.listen(PORT, () => {
@@ -657,5 +831,7 @@ app.listen(PORT, () => {
   console.log(`   菜单 API：http://localhost:${PORT}/api/menu`);
   console.log(`   同步 API：http://localhost:${PORT}/api/menu/sync`);
   console.log(`   订单 API：http://localhost:${PORT}/api/orders`);
+  console.log(`   追踪 API：http://localhost:${PORT}/api/track`);
+  console.log(`   统计 API：http://localhost:${PORT}/api/analytics`);
   console.log(`   订单表ID：${FEISHU_CONFIG.orderTableId}`);
 });
