@@ -332,6 +332,8 @@
   .order-no { background: var(--bg); border-radius: 10px; padding: 12px 20px; margin: 16px 0; font-size: 14px; }
   .order-no span { color: var(--primary); font-weight: 700; font-size: 16px; }
   .btn-back-menu { background: var(--primary); color: #fff; border: none; padding: 14px 40px; border-radius: 24px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+  .btn-back-menu.btn-success-secondary { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .success-actions { display: flex; gap: 12px; justify-content: center; margin-top: 20px; width: 100%; }
 
   /* ===== 标签页导航 ===== */
   .page-tabs {
@@ -1390,7 +1392,10 @@ switchPage = function(page) {
   <p style="font-size:13px;color:var(--primary);margin-top:8px;">⏰ 下班不用做饭 · 15分钟带走</p>
   <div class="order-no">订单编号：<span id="successOrderNo"></span></div>
   <p style="font-size:12px;color:#aaa;">到店出示此订单号即可取餐</p>
-  <button class="btn-back-menu" onclick="backToMenu()">继续点餐</button>
+  <div class="success-actions">
+    <button class="btn-back-menu btn-success-secondary" onclick="viewMyOrder()">📋 查看我的订单</button>
+    <button class="btn-back-menu" onclick="backToMenu()">继续点餐</button>
+  </div>
 </div>
 
 <!-- 菜单编辑弹窗 -->
@@ -2288,6 +2293,11 @@ function retryPayment(orderNo) {
 
 function backToMenu() {
   document.getElementById('successPage').classList.remove('show');
+}
+
+function viewMyOrder() {
+  document.getElementById('successPage').classList.remove('show');
+  switchPage('lookup');
 }
 
 // ===== 手机号查询订单 =====
