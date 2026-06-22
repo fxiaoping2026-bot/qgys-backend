@@ -2322,8 +2322,6 @@ async function doLookupOrder() {
   const statusMap = {
     'pending':   { text: '待确认收款', color: '#a0522d', bg: '#ffe5b4' },
     'confirmed': { text: '已确认收款',   color: '#004085', bg: '#e7f3ff' },
-    'ready':     { text: '待制作',       color: '#e65100', bg: '#fff8e1' },
-    'started':   { text: '已开始制作',   color: '#bf360c', bg: '#fff3e0' },
     'making':    { text: '制作中',       color: '#004085', bg: '#cce5ff' },
     'done':      { text: '已完成',       color: '#155724', bg: '#d4edda' },
     'cancelled': { text: '已取消',       color: '#721c24', bg: '#f8d7da' },
@@ -2634,14 +2632,10 @@ function renderAdminOrders() {
   if (activeStatsEl) {
     const pendingCount = activeOrders.filter(o => o.status === 'pending' || o.status === 'retry').length;
     const confirmedCount = activeOrders.filter(o => o.status === 'confirmed').length;
-    const readyCount = activeOrders.filter(o => o.status === 'ready').length;
-    const startedCount = activeOrders.filter(o => o.status === 'started').length;
-    const makingCount = activeOrders.filter(o => o.status === 'making' || o.status === 'new').length;
+    const makingCount = activeOrders.filter(o => o.status === 'making').length;
     let statsText = '';
     if (pendingCount > 0) statsText += `待确认${pendingCount} `;
     if (confirmedCount > 0) statsText += `已确认${confirmedCount} `;
-    if (readyCount > 0) statsText += `待制作${readyCount} `;
-    if (startedCount > 0) statsText += `已开制${startedCount} `;
     if (makingCount > 0) statsText += `制作中${makingCount}`;
     activeStatsEl.textContent = statsText;
   }
@@ -2851,26 +2845,18 @@ function buildOrderCard(o) {
   let statusClass = '', statusText = '';
   if (o.status === 'pending') { statusClass = 'status-pending'; statusText = '待确认收款'; }
   else if (o.status === 'retry') { statusClass = 'status-pending'; statusText = '↩️ 已打回重付'; }
-  else if (o.status === 'confirmed') { statusClass = 'status-confirmed'; statusText = '已确认收款'; }
-  else if (o.status === 'ready') { statusClass = 'status-ready'; statusText = '待制作'; }
-  else if (o.status === 'started') { statusClass = 'status-started'; statusText = '已开始制作'; }
-  else if (o.status === 'new') { statusClass = 'status-making'; statusText = '制作中'; }
   else if (o.status === 'making') { statusClass = 'status-making'; statusText = '制作中'; }
   else if (o.status === 'done') { statusClass = 'status-done'; statusText = '已完成'; }
   else if (o.status === 'cancelled') { statusClass = 'status-done'; statusText = '已取消'; }
   else if (o.status === 'rejected') { statusClass = 'status-done'; statusText = '已拒绝'; }
-  else { statusClass = 'status-done'; statusText = '已完成'; }
+  else { statusClass = 'status-done'; statusText = o.status; }
 
   let actions = '';
   if (o.status === 'pending') {
     actions = `<button class="btn-action btn-accept" onclick="event.stopPropagation();confirmPaymentReceived('${o.no}')">✅ 确认收款</button><button class="btn-action btn-retry" onclick="event.stopPropagation();retryOrder('${o.no}')" style="background:#fff3cd;color:#c62828;border:1px solid #c62828;">↩️ 打回重付</button><button class="btn-action btn-reject" onclick="event.stopPropagation();cancelOrder('${o.no}')">取消订单</button>`;
   } else if (o.status === 'confirmed') {
-    actions = `<button class="btn-action btn-accept" onclick="event.stopPropagation();startPreparing('${o.no}')">🍳 开始准备</button>`;
-  } else if (o.status === 'ready') {
     actions = `<button class="btn-action btn-accept" onclick="event.stopPropagation();startMaking('${o.no}')" style="background:#ff8f00;color:#fff;">▶️ 开始制作</button>`;
-  } else if (o.status === 'started') {
-    actions = `<button class="btn-action btn-accept" onclick="event.stopPropagation();markMaking('${o.no}')" style="background:#e65100;color:#fff;">🔥 制作中</button>`;
-  } else if (o.status === 'making' || o.status === 'new') {
+  } else if (o.status === 'making') {
     actions = `<button class="btn-action btn-done" onclick="event.stopPropagation();doneOrder('${o.no}')">✔ 已完成</button>`;
   } else if (o.status === 'done') {
     actions = `<span style="font-size:12px;color:green">✅ 已完成</span>`;
@@ -3346,17 +3332,9 @@ function confirmPaymentReceived(no) {
   // 待确认收款 → 已确认收款
   updateOrderStatus(no, 'confirmed', '✅ 收款已确认，准备开始制作');
 }
-function startPreparing(no) {
-  // 已确认收款 → 待制作
-  updateOrderStatus(no, 'ready', '🍳 开始准备食材');
-}
 function startMaking(no) {
-  // 待制作 → 已开始制作
-  updateOrderStatus(no, 'started', '▶️ 已开始制作');
-}
-function markMaking(no) {
-  // 已开始制作 → 制作中
-  updateOrderStatus(no, 'making', '🔥 制作中');
+  // 待确认收款/已确认收款 → 制作中（合并"开始准备"+"开始制作"为一步）
+  updateOrderStatus(no, 'making', '🔥 已开始制作');
 }
 function doneOrder(no) {
   updateOrderStatus(no, 'done', '订单已完成！');
@@ -3416,9 +3394,7 @@ function updateAdminStats() {
   const pending = orders.filter(o => o.status === 'pending').length;
   const retry = orders.filter(o => o.status === 'retry').length;
   const confirmed = orders.filter(o => o.status === 'confirmed').length;
-  const ready = orders.filter(o => o.status === 'ready').length;
-  const started = orders.filter(o => o.status === 'started').length;
-  const making = orders.filter(o => o.status === 'making' || o.status === 'new').length;
+  const making = orders.filter(o => o.status === 'making').length;
   // 今日完成：只统计今天标记完成的订单
   const done = orders.filter(o => o.status === 'done' && o.doneDate === today).length;
 
