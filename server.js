@@ -190,13 +190,7 @@ app.post('/api/orders', async (req, res) => {
     const baseUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.appToken}/tables/${FEISHU_CONFIG.orderTableId}`;
 
     // 检查是否已存在（相同订单号覆盖）
-    const existResp = await fetch(`${baseUrl}/records?page_size=500`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const existData = await existResp.json();
-    if (existData.code !== 0) throw new Error('读取订单表失败: ' + existData.msg);
-
-    const existingRecords = existData.data.items || [];
+    const existingRecords = await fetchAllRecords(baseUrl, token);
     const existRec = existingRecords.find(r =>
       r.fields[ORDER_FIELDS.orderNo] === no
     );
@@ -238,6 +232,27 @@ app.post('/api/orders', async (req, res) => {
 });
 
 // ============================================================
+// 通用：循环获取飞书所有页记录（处理分页）
+// ============================================================
+async function fetchAllRecords(baseUrl, token) {
+  let allRecords = [];
+  let pageToken = '';
+  do {
+    const url = pageToken
+      ? `${baseUrl}/records?page_size=500&page_token=${pageToken}`
+      : `${baseUrl}/records?page_size=500`;
+    const resp = await fetch(url, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const data = await resp.json();
+    if (data.code !== 0) throw new Error(data.msg);
+    allRecords = allRecords.concat(data.data.items || []);
+    pageToken = data.data?.next_page_token || '';
+  } while (pageToken);
+  return allRecords;
+}
+
+// ============================================================
 // API：获取所有订单（商家后台用）— 必须在 /:phone 前面
 // GET /api/orders/all
 // ============================================================
@@ -245,13 +260,8 @@ app.get('/api/orders/all', async (req, res) => {
   try {
     const token = await getTenantToken();
     const baseUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.appToken}/tables/${FEISHU_CONFIG.orderTableId}`;
-    const resp = await fetch(`${baseUrl}/records?page_size=500`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await resp.json();
-    if (data.code !== 0) throw new Error(data.msg);
+    const records = await fetchAllRecords(baseUrl, token);
 
-    const records = data.data.items || [];
     const orders = records.map(r => ({
       _recordId: r.record_id,
       no:      r.fields[ORDER_FIELDS.orderNo]  || '',
@@ -281,13 +291,8 @@ app.get('/api/orders/:phone', async (req, res) => {
     const phone = req.params.phone;
     const token = await getTenantToken();
     const baseUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.appToken}/tables/${FEISHU_CONFIG.orderTableId}`;
-    const resp = await fetch(`${baseUrl}/records?page_size=500`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await resp.json();
-    if (data.code !== 0) throw new Error(data.msg);
+    const records = await fetchAllRecords(baseUrl, token);
 
-    const records = data.data.items || [];
     const orders = records
       .filter(r => r.fields[ORDER_FIELDS.phone] === phone)
       .map(r => ({
@@ -322,14 +327,8 @@ app.put('/api/orders/:orderNo', async (req, res) => {
     const token = await getTenantToken();
     const baseUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.appToken}/tables/${FEISHU_CONFIG.orderTableId}`;
 
-    // 查找记录
-    const resp = await fetch(`${baseUrl}/records?page_size=500`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const data = await resp.json();
-    if (data.code !== 0) throw new Error(data.msg);
-
-    const records = data.data.items || [];
+    // 查找记录（处理分页）
+    const records = await fetchAllRecords(baseUrl, token);
     const target = records.find(r => r.fields[ORDER_FIELDS.orderNo] === orderNo);
     if (!target) return res.status(404).json({ success: false, error: '订单不存在' });
 

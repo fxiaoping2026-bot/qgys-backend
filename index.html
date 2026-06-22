@@ -355,6 +355,9 @@
 
   /* ===== 查询订单页 ===== */
   .lookup-page { padding: 28px 16px; min-height: calc(100vh - 130px); }
+  /* 查询订单页：确保在固定高度容器内正确滚动 */
+  #page-lookup.active { height: calc(100vh - 60px) !important; overflow-y: auto !important; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .lookup-result { padding-bottom: 40px; } /* 底部留白防止最后一条被截断 */
   .lookup-header { text-align: center; margin-bottom: 30px; padding-top: 24px; }
   .lookup-header h2 { font-size: 23px; font-weight: 800; margin-bottom: 8px; letter-spacing: 0.5px; }
   .lookup-header p { font-size: 14px; color: var(--text-sub); }
