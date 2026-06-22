@@ -740,7 +740,7 @@ app.get('/api/analytics', async (req, res) => {
     const repeatUidSet = new Set();
     Object.entries(submitOrderUsers).forEach(([key, count]) => {
       if (count > 1) {
-        const uid = key.rsplit('_', 1)[0]; // user_id部分
+        const uid = key.split('_')[0]; // user_id部分
         repeatUidSet.add(uid);
       }
     });
