@@ -34,6 +34,23 @@
     position: sticky; top: 0; z-index: 100;
     overflow: hidden;
   }
+  .btn-exit {
+    background: rgba(255,255,255,0.13);
+    border: 1px solid rgba(255,255,255,0.18);
+    color: rgba(255,255,255,0.85);
+    font-size: 11.5px;
+    padding: 5px 10px;
+    border-radius: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    flex-shrink: 0;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+  .btn-exit:active {
+    background: rgba(255,255,255,0.25);
+    transform: scale(0.95);
+  }
   .store-header::before {
     content: '';
     position: absolute;
@@ -535,6 +552,7 @@
 
 <!-- 顶部店名 -->
 <div class="store-header">
+  <button class="btn-exit" onclick="confirmExit()">↩️ 退出</button>
   <div class="store-logo">🦪</div>
   <div class="store-info">
     <h1>企港渔叔社区海鲜厨房</h1>
@@ -560,12 +578,12 @@
 
 <!-- 社交媒体入口（精简版） -->
 <div class="social-banner">
-  <a class="social-btn douyin" href="https://v.douyin.com/76164539251" target="_blank" onclick="showToast('正在跳转抖音...')">
+  <span class="social-btn douyin" onclick="confirmJump('https://v.douyin.com/76164539251', '抖音')">
     <span class="social-icon">🎵</span> 关注抖音 · 看鲜活海鲜直播
-  </a>
-  <a class="social-btn weixin" href="https://channels.weixin.qq.com/platform/s?sphruTmkUxYAjqN" target="_blank" onclick="showToast('正在跳转视频号...')">
+  </span>
+  <span class="social-btn weixin" onclick="confirmJump('https://channels.weixin.qq.com/platform/s?sphruTmkUxYAjqN', '视频号')">
     <span class="social-icon">💬</span> 关注视频号
-  </a>
+  </span>
 </div>
 
 <!-- 顶部标签（顾客只看到 点餐 和 查询订单） -->
@@ -1773,6 +1791,27 @@ try {
   }
 } catch(e) {}
 
+// 退出页面二次确认
+function confirmExit() {
+  const confirmed = confirm('确定要退出点餐页面吗？\n\n（退出后需要重新扫码才能进入）');
+  if (confirmed) showExitPage();
+}
+function showExitPage() {
+  document.body.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;font-family:inherit;text-align:center;padding:20px;background:#faf6f1;">
+      <div style="font-size:60px;margin-bottom:20px;">👋</div>
+      <div style="font-size:20px;font-weight:700;margin-bottom:10px;color:#1a1a1a;">您已退出点餐页面</div>
+      <div style="font-size:14px;color:#888;margin-bottom:30px;line-height:1.6;">请重新扫码进入点餐系统<br>企港渔叔海鲜厨房 欢迎您再次光临 🦐</div>
+      <div style="font-size:13px;color:#e8441a;font-weight:600;">📍 佛山市禅城区水悦龙湾</div>
+    </div>
+  `;
+}
+// 外部链接跳转二次确认
+function confirmJump(url, name) {
+  const confirmed = confirm('确定要跳转到' + name + '吗？\n\n提示：跳转后需要重新扫码才能返回点餐页面');
+  if (confirmed) window.open(url, '_blank');
+}
+
 // 离开页面前提醒（顾客端：防止误关，无论购物车是否有东西）
 window.addEventListener('beforeunload', function(e) {
   // 始终提醒，防止误关页面需要重新扫码
@@ -1787,12 +1826,11 @@ window.addEventListener('beforeunload', function(e) {
   history.pushState(null, null, location.href);
   window.addEventListener('popstate', function(e) {
     if (_allowBack) return;
-    const confirmed = confirm('确定要退出点餐页面吗？');
+    const confirmed = confirm('确定要退出点餐页面吗？\n\n（退出后需要重新扫码才能进入）');
     if (!confirmed) {
       history.pushState(null, null, location.href);
     } else {
-      _allowBack = true;
-      history.back();
+      showExitPage();
     }
   });
 })();
