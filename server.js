@@ -18,6 +18,7 @@ const FEISHU_CONFIG = {
   appToken:   process.env.FEISHU_APP_TOKEN    || 'CTB4bUoRvaaBvZsh7p7cYPI7nEf',
   tableId:    process.env.FEISHU_TABLE_ID     || 'tbl2dODf9nxi7iOZ',
   orderTableId: process.env.FEISHU_ORDER_TABLE_ID || 'tblIXCshUqK2VnHU',
+  analyticsTableId: process.env.FEISHU_ANALYTICS_TABLE_ID || '',  // 用户行为统计表ID（需手动创建）
 };
 
 // 飞书字段名映射（API 默认返回字段名作为 key）
@@ -825,6 +826,97 @@ app.get('/api/analytics/detail', (req, res) => {
 // ============================================================
 // 启动服务
 // ============================================================
+
+// ============================================================
+// 同步追踪数据到飞书多维表格
+// POST /api/analytics/sync-to-feishu
+// ============================================================
+app.post('/api/analytics/sync-to-feishu', (req, res) => {
+  // 读取所有追踪数据
+  db.all('SELECT * FROM track_events ORDER BY timestamp DESC', [], (err, rows) => {
+    if (err) {
+      console.error('读取追踪数据失败:', err);
+      return res.status(500).json({ success: false, error: '读取数据失败' });
+    }
+
+    if (rows.length === 0) {
+      return res.json({ success: true, message: '没有数据需要同步', synced: 0 });
+    }
+
+    // 检查是否配置了飞书表格ID
+    if (!FEISHU_CONFIG.analyticsTableId) {
+      return res.status(400).json({
+        success: false,
+        error: '未配置飞书表格ID，请在环境变量中设置 FEISHU_ANALYTICS_TABLE_ID'
+      });
+    }
+
+    // 异步同步到飞书
+    (async () => {
+      try {
+        const token = await getTenantToken();
+        const baseUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.appToken}/tables/${FEISHU_CONFIG.analyticsTableId}`;
+
+        // 1. 读取飞书现有记录（用于去重）
+        const existResp = await fetch(`${baseUrl}/records?page_size=500`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const existData = await existResp.json();
+        if (existData.code !== 0) {
+          throw new Error(`读取飞书失败: ${existData.msg}`);
+        }
+
+        // 构建已存在记录的 ID 集合（用 user_id + timestamp 作为唯一键）
+        const existSet = new Set();
+        (existData.data?.items || []).forEach(rec => {
+          const f = rec.fields;
+          const key = `${f['用户ID'] || ''}_${f['时间戳'] || ''}`;
+          existSet.add(key);
+        });
+
+        // 2. 逐条同步（跳过已存在的）
+        let created = 0, skipped = 0;
+        for (let i = 0; i < rows.length; i++) {
+          const row = rows[i];
+          const key = `${row.user_id}_${row.timestamp}`;
+          if (existSet.has(key)) {
+            skipped++;
+            continue;
+          }
+
+          // 解析 event_data
+          let eventData = {};
+          try { eventData = JSON.parse(row.event_data || '{}'); } catch(e) {}
+
+          const fields = {
+            '用户ID': row.user_id,
+            '事件类型': row.event_type,
+            '事件数据': JSON.stringify(eventData),
+            '时间戳': row.timestamp,
+          };
+
+          await fetch(`${baseUrl}/records`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fields }),
+          });
+          created++;
+
+          // 每 10 条暂停一下，避免频率限制
+          if (created % 10 === 0) await new Promise(r => setTimeout(r, 500));
+        }
+
+        res.json({ success: true, created, skipped, total: rows.length });
+      } catch (feishuErr) {
+        console.error('同步到飞书失败:', feishuErr);
+        res.status(500).json({ success: false, error: feishuErr.message });
+      }
+    })();
+  });
+});
+
+
+
 app.listen(PORT, () => {
   console.log(`✅ 企港渔叔后端服务已启动：http://localhost:${PORT}`);
   console.log(`   H5 前端：http://localhost:${PORT}/`);
