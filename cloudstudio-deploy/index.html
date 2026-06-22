@@ -11,7 +11,7 @@
     --primary-light: #ff6b3d;
     --primary-dark: #c0340d;
     --primary-bg: #fff5f0;
-    --bg: #f5f3f0;
+    --bg: #faf6f1;
     --white: #fff;
     --text: #1a1a1a;
     --text-sub: #717171;
@@ -56,7 +56,7 @@
   .table-badge { margin-left: auto; background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08)); border-radius: 20px; padding: 5px 14px; font-size: 12px; color: #fff; flex-shrink: 0; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.12); }
 
   /* ===== 主体布局 ===== */
-  .main-body { display: flex; height: calc(100vh - 68px - 52px - 48px); }
+  .main-body { display: flex; height: calc(100vh - 68px - 38px - 52px - 46px - 66px); }
 
   /* ===== 左侧分类 ===== */
   .cat-sidebar {
@@ -83,21 +83,28 @@
   .cat-item.active .cat-icon { filter: grayscale(0) drop-shadow(0 2px 4px rgba(232,68,26,0.3)); transform: scale(1.08); }
 
   /* ===== 右侧菜单列表 ===== */
-  .menu-list { flex: 1; overflow-y: auto; padding: 8px 10px; background: var(--bg); }
+  .menu-list { flex: 1; overflow-y: auto; padding: 8px 10px 130px; background: var(--bg); }
   .menu-list::-webkit-scrollbar { display: none; }
   .menu-section-title {
-    padding: 14px 8px 8px; font-size: 13px; color: var(--text-sub);
-    background: transparent; font-weight: 700; letter-spacing: 1px;
+    padding: 14px 8px 8px; font-size: 13px; color: var(--primary);
+    background: transparent; font-weight: 800; letter-spacing: 1.5px;
     position: sticky; top: 0; z-index: 5;
-    text-transform: uppercase;
   }
+  .menu-section-title .section-fire { font-size: 15px; margin-right: 3px; }
   .menu-item {
     background: #fff; display: flex; align-items: center;
-    padding: 12px; border-radius: var(--radius); margin-bottom: 9px;
+    padding: 12px 12px 12px 10px; border-radius: var(--radius); margin-bottom: 9px;
     gap: 11px; box-shadow: var(--shadow-sm);
-    transition: all 0.2s ease; border: 1px solid rgba(0,0,0,0.03);
+    transition: all 0.2s ease; border: 1.5px solid rgba(232,68,26,0.04); position: relative;
+    overflow: hidden;
   }
-  .menu-item:active { transform: scale(0.985); box-shadow: var(--shadow-sm); }
+  .menu-item::before {
+    content: ''; position: absolute; left: 0; top: 8px; bottom: 8px;
+    width: 3px; background: linear-gradient(180deg, var(--primary), var(--primary-light)); border-radius: 0 3px 3px 0; opacity: 0;
+    transition: opacity 0.25s ease;
+  }
+  .menu-item:active::before { opacity: 1; }
+  .menu-item:active { transform: scale(0.985); }
   .menu-item-img {
     width: 78px; height: 78px; border-radius: 12px; object-fit: cover;
     background: linear-gradient(145deg, #f8f6f3, #efecea); flex-shrink: 0; font-size: 34px;
@@ -152,6 +159,17 @@
     display: inline-block; font-weight: 600; border: 1px solid rgba(232,68,26,0.12);
   }
   .sold-out { color: #aaa; font-size: 13px; padding: 6px 4px; }
+
+  /* ===== 底部地址信息条 ===== */
+  .address-bar {
+    background: linear-gradient(135deg, #e8441a, #d63a14);
+    color: #fff; padding: 8px 16px;
+    font-size: 11.5px; display: flex; align-items: center; justify-content: center; gap: 6px;
+    position: fixed; bottom: 66px; left: 50%; transform: translateX(-50%);
+    width: 100%; max-width: 480px; z-index: 199;
+    letter-spacing: 0.5px; font-weight: 500;
+  }
+  .address-bar .addr-icon { font-size: 13px; }
 
   /* ===== 底部购物车栏 ===== */
   .cart-bar {
@@ -302,7 +320,7 @@
   /* ===== 标签页导航 ===== */
   .page-tabs {
     display: flex; background: #fff;
-    position: sticky; top: 68px; z-index: 50;
+    position: sticky; top: calc(68px + 38px + 46px); z-index: 50;
     padding: 4px 12px; gap: 6px;
     box-shadow: var(--shadow-sm);
   }
@@ -458,35 +476,53 @@
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-  /* ===== 社交媒体横幅 ===== */
+  /* ===== 品牌Slogan栏 ===== */
+  .slogan-bar {
+    background: linear-gradient(135deg, #fff9f5, #fef3eb);
+    padding: 10px 16px; display: flex; align-items: center; justify-content: center;
+    gap: 8px; border-bottom: 1px solid #f5ede4;
+  }
+  .slogan-bar .slogan-icon { font-size: 18px; }
+  .slogan-bar .slogan-text { font-size: 13px; color: var(--primary); font-weight: 700; letter-spacing: 1.5px; }
+  .slogan-bar .slogan-sub { font-size: 11px; color: rgba(232,68,26,0.45); margin-left: 6px; }
+
+  /* ===== 特色卖点横幅 ===== */
+  .feature-bar {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+    padding: 10px 12px; background: #fff;
+    border-bottom: 1px solid #f5ede4;
+  }
+  .feature-item {
+    display: flex; flex-direction: column; align-items: center; gap: 3px;
+    padding: 7px 4px 6px; border-radius: 12px;
+    background: linear-gradient(180deg, #fffbf8, #fff8f2);
+    border: 1px solid #f5ebe0; transition: all 0.25s ease;
+  }
+  .feature-item:active { transform: scale(0.96); }
+  .feature-item .feat-icon { font-size: 20px; }
+  .feature-item .feat-label { font-size: 10.5px; color: #555; font-weight: 600; letter-spacing: 0.3px; }
+  .feature-item .feat-desc { font-size: 9px; color: #aaa; }
+
+  /* ===== 社交媒体横幅（精简版）===== */
   .social-banner {
-    display: flex; gap: 10px; padding: 9px 14px;
-    background: linear-gradient(135deg, #ff6b6b 0%, #ee5a5a 40%, #e8441a 100%);
+    display: flex; gap: 8px; padding: 7px 14px;
+    background: linear-gradient(135deg, #fff5f0, #ffede5);
     align-items: center;
-    position: relative;
-    overflow: hidden;
+    border-bottom: none;
   }
-  .social-banner::after {
-    content: '';
-    position: absolute;
-    top: -50%; right: -20px;
-    width: 100px; height: 200%;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.12), transparent);
-    transform: rotate(15deg);
-  }
+  .social-banner::after { display: none; }
   .social-btn {
-    flex: 1; display: flex; align-items: center; justify-content: center; gap: 5px;
-    background: rgba(255,255,255,0.2); border-radius: 20px;
-    padding: 7px 11px; color: #fff; font-size: 12.5px; font-weight: 600;
-    text-decoration: none; cursor: pointer; border: none;
-    transition: all 0.25s ease; backdrop-filter: blur(8px);
-    -webkit-tap-highlight-color: transparent;
+    flex: 1; display: flex; align-items: center; justify-content: center; gap: 4px;
+    background: rgba(232,68,26,0.06); border-radius: 18px;
+    padding: 6px 10px; color: var(--primary); font-size: 11.5px; font-weight: 600;
+    text-decoration: none; cursor: pointer; border: 1px solid rgba(232,68,26,0.1);
+    transition: all 0.25s ease;
     position: relative; z-index: 1;
   }
-  .social-btn:active { transform: scale(0.96); background: rgba(255,255,255,0.32); }
-  .social-btn .social-icon { font-size: 16px; }
-  .social-btn.douyin { background: rgba(18,18,26,0.55); border: 1px solid rgba(255,255,255,0.18); }
-  .social-btn.weixin { background: rgba(7,193,96,0.45); border: 1px solid rgba(255,255,255,0.15); }
+  .social-btn:active { transform: scale(0.96); background: rgba(232,68,26,0.12); }
+  .social-btn .social-icon { font-size: 15px; }
+  .social-btn.douyin { background: rgba(0,0,0,0.04); border-color: rgba(0,0,0,0.08); color: #333; }
+  .social-btn.weixin { background: rgba(7,193,96,0.06); border-color: rgba(7,193,96,0.12); color: #07c160; }
 
   /* 刷新按钮旋转动画 */
   @keyframes spin {
@@ -507,7 +543,22 @@
   <div class="table-badge" id="tableLabel">扫码点餐</div>
 </div>
 
-<!-- 社交媒体入口 -->
+<!-- 品牌Slogan栏 -->
+<div class="slogan-bar">
+  <span class="slogan-icon">♨</span>
+  <span class="slogan-text">鲜活现蒸 · 到店自提</span>
+  <span class="slogan-sub">— 社区海鲜厨房 —</span>
+</div>
+
+<!-- 特色卖点横幅 -->
+<div class="feature-bar">
+  <div class="feature-item"><span class="feat-icon">🦐</span><span class="feat-label">鲜活现捞</span><span class="feat-desc">当天到店</span></div>
+  <div class="feature-item"><span class="feat-icon">🫕</span><span class="feat-label">现蒸现做</span><span class="feat-desc">热气上桌</span></div>
+  <div class="feature-item"><span class="feat-icon">🏠</span><span class="feat-label">社区自提</span><span class="feat-desc">无需排队</span></div>
+  <div class="feature-item"><span class="feat-icon">🌿</span><span class="feat-label">少油少盐</span><span class="feat-desc">健康美味</span></div>
+</div>
+
+<!-- 社交媒体入口（精简版） -->
 <div class="social-banner">
   <a class="social-btn douyin" href="https://v.douyin.com/76164539251" target="_blank" onclick="showToast('正在跳转抖音...')">
     <span class="social-icon">🎵</span> 关注抖音 · 看鲜活海鲜直播
@@ -553,6 +604,13 @@
     <div class="cat-sidebar" id="catSidebar"></div>
     <!-- 菜单列表 -->
     <div class="menu-list" id="menuList"></div>
+  </div>
+
+  <!-- 底部地址信息条 -->
+  <div class="address-bar">
+    <span class="addr-icon">📍</span>
+    <span>佛山市禅城区水悦龙湾 · 企港渔叔海鲜厨房</span>
+    <span style="opacity:0.6; margin-left:4px;">| 建议到店自提</span>
   </div>
 
   <!-- 购物车底栏 -->
@@ -1012,7 +1070,7 @@ function renderMenu() {
   const list = document.getElementById('menuList');
   list.innerHTML = menuData.map(cat => `
     <div id="section-${cat.id}">
-      <div class="menu-section-title">${cat.name}</div>
+      <div class="menu-section-title"><span class="section-fire">🔥</span>${cat.name}</div>
       ${cat.items.map(item => renderMenuItem(item)).join('')}
     </div>
   `).join('');
