@@ -18,7 +18,7 @@ const FEISHU_CONFIG = {
   appToken:   process.env.FEISHU_APP_TOKEN    || 'CTB4bUoRvaaBvZsh7p7cYPI7nEf',
   tableId:    process.env.FEISHU_TABLE_ID     || 'tbl2dODf9nxi7iOZ',
   orderTableId: process.env.FEISHU_ORDER_TABLE_ID || 'tblIXCshUqK2VnHU',
-  analyticsTableId: process.env.FEISHU_ANALYTICS_TABLE_ID || '',  // 用户行为统计表ID（需手动创建）
+  analyticsTableId: process.env.FEISHU_ANALYTICS_TABLE_ID || 'tblnRZZ8ikYvkPMf',  // 用户行为统计表ID
 };
 
 // 飞书字段名映射（API 默认返回字段名作为 key）
