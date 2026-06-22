@@ -176,6 +176,15 @@ const ORDER_FIELDS = {
   time:     '下单时间',  // 文本
 };
 
+// 飞书用户行为表字段映射
+const ANALYTICS_FIELDS = {
+  'userId':     '用户ID',
+  'phone':      '手机号',
+  'eventType':  '事件类型',
+  'eventData':  '事件数据',
+  'timestamp':  '时间戳',
+};
+
 // ============================================================
 // API：提交新订单
 // POST /api/orders
@@ -649,279 +658,196 @@ app.post('/api/shoukuanba/query', async (req, res) => {
 });
 
 // ============================================================
-// 用户行为追踪系统
+// 用户行为追踪系统（基于飞书多维表格，数据持久化不丢失）
 // ============================================================
-const sqlite3 = require('sqlite3').verbose();
-const DB_PATH = path.join(__dirname, 'analytics.db');
 
-// 初始化数据库
-const db = new sqlite3.Database(DB_PATH, (err) => {
-  if (err) {
-    console.error('❌ 数据库连接失败:', err);
-  } else {
-    console.log('✅ 用户行为数据库已连接');
-  }
-});
+// 接收追踪事件 — 直接写入飞书
+app.post('/api/track', async (req, res) => {
+  try {
+    const { userId, eventType, eventData, phone } = req.body;
 
-// 创建追踪事件表
-db.run(`
-  CREATE TABLE IF NOT EXISTS track_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id TEXT NOT NULL,
-    event_type TEXT NOT NULL,
-    event_data TEXT,
-    phone TEXT DEFAULT '',
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  )
-`, (err) => {
-  if (err) {
-    console.error('❌ 创建追踪表失败:', err);
-  } else {
-    console.log('✅ 追踪事件表已就绪');
-    // 如果 phone 字段不存在则添加（兼容旧数据）
-    db.run(`ALTER TABLE track_events ADD COLUMN phone TEXT DEFAULT ''`, [], (alterErr) => {
-      if (alterErr && !alterErr.message.includes('duplicate column')) {
-        // 忽略已存在的错误
-      }
-    });
-  }
-});
-
-// 创建索引（加速查询）
-db.run(`CREATE INDEX IF NOT EXISTS idx_user_id ON track_events(user_id)`, () => {});
-db.run(`CREATE INDEX IF NOT EXISTS idx_event_type ON track_events(event_type)`, () => {});
-db.run(`CREATE INDEX IF NOT EXISTS idx_timestamp ON track_events(timestamp)`, () => {});
-
-// 接收追踪事件
-app.post('/api/track', (req, res) => {
-  const { userId, eventType, eventData, phone } = req.body;
-
-  if (!userId || !eventType) {
-    return res.status(400).json({ error: '缺少必需参数' });
-  }
-
-  const data = eventData ? JSON.stringify(eventData) : null;
-  const phoneStr = (phone || '').trim();
-
-  db.run(
-    'INSERT INTO track_events (user_id, event_type, event_data, phone) VALUES (?, ?, ?, ?)',
-    [userId, eventType, data, phoneStr],
-    function(err) {
-      if (err) {
-        console.error('❌ 追踪事件存储失败:', err);
-        return res.status(500).json({ error: '存储失败' });
-      }
-      res.json({ success: true, id: this.lastID });
-    }
-  );
-});
-
-// 获取统计数据（商家后台用）
-app.get('/api/analytics', (req, res) => {
-  // 获取今日数据
-  const today = new Date().toISOString().split('T')[0];
-
-  db.all(`
-    SELECT
-      event_type,
-      COUNT(DISTINCT user_id) as user_count,
-      COUNT(*) as event_count
-    FROM track_events
-    WHERE DATE(timestamp) = ?
-    GROUP BY event_type
-  `, [today], (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: '查询失败' });
+    if (!userId || !eventType) {
+      return res.status(400).json({ error: '缺少必需参数' });
     }
 
-    // 计算转化率
-    const stats = {};
-    rows.forEach(row => {
-      stats[row.event_type] = {
-        users: row.user_count,
-        events: row.event_count
-      };
-    });
+    const token = await getTenantToken();
+    const baseUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.appToken}/tables/${FEISHU_CONFIG.analyticsTableId}`;
 
-    // 获取总用户数
-    db.get(`SELECT COUNT(DISTINCT user_id) as total_users FROM track_events`, [], (err, result) => {
-      if (err) {
-        return res.status(500).json({ error: '查询失败' });
+    const fields = {};
+    fields[ANALYTICS_FIELDS.userId] = userId;
+    fields[ANALYTICS_FIELDS.phone] = (phone || '').trim();
+    fields[ANALYTICS_FIELDS.eventType] = eventType;
+    fields[ANALYTICS_FIELDS.eventData] = JSON.stringify(eventData || {});
+    fields[ANALYTICS_FIELDS.timestamp] = new Date().toISOString();
+
+    const resp = await fetch(`${baseUrl}/records`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fields }),
+    });
+    const data = await resp.json();
+    if (data.code !== 0) throw new Error(data.msg);
+
+    res.json({ success: true, id: data.data?.record?.record_id });
+  } catch (err) {
+    console.error('❌ 追踪事件写入飞书失败:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 获取统计数据（商家后台用）— 从飞书读取
+app.get('/api/analytics', async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const token = await getTenantToken();
+    const baseUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.appToken}/tables/${FEISHU_CONFIG.analyticsTableId}`;
+
+    // 获取全部记录（用分页函数）
+    const records = await fetchAllRecords(baseUrl, token);
+
+    // 今日数据统计
+    const todayStats = {};
+    const allUserIds = new Set();
+    const submitOrderUsers = {}; // user_id -> 下单次数
+
+    records.forEach(r => {
+      const f = r.fields;
+      const uid = f[ANALYTICS_FIELDS.userId];
+      const etype = f[ANALYTICS_FIELDS.eventType];
+      const ts = f[ANALYTICS_FIELDS.timestamp] || '';
+      
+      allUserIds.add(uid);
+
+      // 是否是今天
+      const isToday = ts.startsWith(today);
+
+      if (isToday) {
+        if (!todayStats[etype]) todayStats[etype] = { users: new Set(), events: 0 };
+        todayStats[etype].users.add(uid);
+        todayStats[etype].events++;
       }
 
-      // 获取复购用户数（下单超过1次的用户）
-      db.all(`
-        SELECT user_id, COUNT(DISTINCT DATE(timestamp)) as order_days
-        FROM track_events
-        WHERE event_type = 'submit_order'
-        GROUP BY user_id
-        HAVING order_days > 1
-      `, [], (err, repeatUsers) => {
-        if (err) {
-          return res.status(500).json({ error: '查询失败' });
-        }
+      // 统计下单次数（用于复购计算）
+      if (etype === 'submit_order') {
+        const day = ts.split('T')[0];
+        const key = `${uid}_${day}`;
+        submitOrderUsers[key] = (submitOrderUsers[key] || 0) + 1;
+      }
+    });
 
-        res.json({
-          date: today,
-          totalUsers: result.total_users || 0,
-          repeatUsers: repeatUsers.length,
-          events: stats,
-          conversionRate: stats.page_view && stats.submit_order
-            ? (stats.submit_order.users / stats.page_view.users * 100).toFixed(2) + '%'
-            : '0%'
-        });
+    // 复购用户：同一天内下单超过1次的用户
+    let repeatCount = 0;
+    const repeatUidSet = new Set();
+    Object.entries(submitOrderUsers).forEach(([key, count]) => {
+      if (count > 1) {
+        const uid = key.rsplit('_', 1)[0]; // user_id部分
+        repeatUidSet.add(uid);
+      }
+    });
+    repeatCount = repeatUidSet.size;
+
+    // 格式化输出（Set转数字）
+    const events = {};
+    Object.keys(todayStats).forEach(k => {
+      events[k] = { users: todayStats[k].users.size, events: todayStats[k].events };
+    });
+
+    res.json({
+      date: today,
+      totalUsers: allUserIds.size,
+      repeatUsers: repeatCount,
+      events,
+      conversionRate: events.page_view && events.submit_order
+        ? (events.submit_order.users / events.page_view.users * 100).toFixed(2) + '%'
+        : '0%'
+    });
+  } catch (err) {
+    console.error('❌ 统计查询失败:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 获取详细统计数据（从飞书读取）
+app.get('/api/analytics/detail', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const token = await getTenantToken();
+    const baseUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.appToken}/tables/${FEISHU_CONFIG.analyticsTableId}`;
+
+    const records = await fetchAllRecords(baseUrl, token);
+
+    // 过滤日期范围
+    let filtered = records;
+    if (startDate || endDate) {
+      filtered = records.filter(r => {
+        const ts = r.fields[ANALYTICS_FIELDS.timestamp] || '';
+        const d = ts.split('T')[0];
+        if (startDate && d < startDate) return false;
+        if (endDate && d > endDate) return false;
+        return true;
       });
-    });
-  });
-});
-
-// 获取详细统计数据
-app.get('/api/analytics/detail', (req, res) => {
-  const { startDate, endDate } = req.query;
-
-  let dateFilter = '';
-  let params = [];
-
-  if (startDate && endDate) {
-    dateFilter = 'WHERE DATE(timestamp) BETWEEN ? AND ?';
-    params = [startDate, endDate];
-  } else if (startDate) {
-    dateFilter = 'WHERE DATE(timestamp) >= ?';
-    params = [startDate];
-  }
-
-  // 每日统计
-  db.all(`
-    SELECT
-      DATE(timestamp) as date,
-      event_type,
-      COUNT(DISTINCT user_id) as user_count,
-      COUNT(*) as event_count
-    FROM track_events
-    ${dateFilter}
-    GROUP BY DATE(timestamp), event_type
-    ORDER BY date DESC
-  `, params, (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: '查询失败' });
     }
+
+    // 每日统计
+    const dailyStats = {};
+    filtered.forEach(r => {
+      const ts = r.fields[ANALYTICS_FIELDS.timestamp] || '';
+      const date = ts.split('T')[0];
+      const etype = r.fields[ANALYTICS_FIELDS.eventType];
+      const uid = r.fields[ANALYTICS_FIELDS.userId];
+
+      if (!dailyStats[date]) dailyStats[date] = {};
+      if (!dailyStats[date][etype]) dailyStats[date][etype] = { users: new Set(), events: 0 };
+      dailyStats[date][etype].users.add(uid);
+      dailyStats[date][etype].events++;
+    });
 
     // 热门菜品统计
-    db.all(`
-      SELECT
-        json_extract(event_data, '$.itemName') as item_name,
-        COUNT(*) as view_count,
-        COUNT(DISTINCT user_id) as user_count
-      FROM track_events
-      WHERE event_type = 'item_view' ${startDate ? 'AND DATE(timestamp) >= ?' : ''}
-      GROUP BY item_name
-      ORDER BY view_count DESC
-      LIMIT 20
-    `, startDate ? [startDate] : [], (err, hotItems) => {
-      if (err) {
-        return res.status(500).json({ error: '查询失败' });
-      }
+    const itemMap = {};
+    filtered.filter(r => r.fields[ANALYTICS_FIELDS.eventType] === 'item_view').forEach(r => {
+      let itemName = '未知菜品';
+      try {
+        const ed = JSON.parse(r.fields[ANALYTICS_FIELDS.eventData] || '{}');
+        itemName = ed.itemName || '未知菜品';
+      } catch(e) {}
 
-      res.json({
-        dailyStats: rows,
-        hotItems: hotItems
+      if (!itemMap[itemName]) itemMap[itemName] = { views: 0, users: new Set() };
+      itemMap[itemName].views++;
+      itemMap[itemName].users.add(r.fields[ANALYTICS_FIELDS.userId]);
+    });
+
+    const hotItems = Object.entries(itemMap)
+      .map(([name, data]) => ({ name, views: data.views, users: data.users.size }))
+      .sort((a, b) => b.views - a.views)
+      .slice(0, 20);
+
+    // 将Set转为数字以便JSON序列化
+    const dailyOutput = {};
+    Object.keys(dailyStats).forEach(date => {
+      dailyOutput[date] = {};
+      Object.keys(dailyStats[date]).forEach(etype => {
+        dailyOutput[date][etype] = {
+          users: dailyStats[date][etype].users.size,
+          events: dailyStats[date][etype].events
+        };
       });
     });
-  });
+
+    res.json({
+      dailyStats: dailyOutput,
+      hotItems
+    });
+  } catch (err) {
+    console.error('❌ 详细统计查询失败:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ============================================================
 // 启动服务
 // ============================================================
 
-// ============================================================
-// 同步追踪数据到飞书多维表格
-// POST /api/analytics/sync-to-feishu
-// ============================================================
-app.post('/api/analytics/sync-to-feishu', (req, res) => {
-  // 读取所有追踪数据
-  db.all('SELECT * FROM track_events ORDER BY timestamp DESC', [], (err, rows) => {
-    if (err) {
-      console.error('读取追踪数据失败:', err);
-      return res.status(500).json({ success: false, error: '读取数据失败' });
-    }
-
-    if (rows.length === 0) {
-      return res.json({ success: true, message: '没有数据需要同步', synced: 0 });
-    }
-
-    // 检查是否配置了飞书表格ID
-    if (!FEISHU_CONFIG.analyticsTableId) {
-      return res.status(400).json({
-        success: false,
-        error: '未配置飞书表格ID，请在环境变量中设置 FEISHU_ANALYTICS_TABLE_ID'
-      });
-    }
-
-    // 异步同步到飞书
-    (async () => {
-      try {
-        const token = await getTenantToken();
-        const baseUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.appToken}/tables/${FEISHU_CONFIG.analyticsTableId}`;
-
-        // 1. 读取飞书现有记录（用于去重）
-        const existResp = await fetch(`${baseUrl}/records?page_size=500`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const existData = await existResp.json();
-        if (existData.code !== 0) {
-          throw new Error(`读取飞书失败: ${existData.msg}`);
-        }
-
-        // 构建已存在记录的 ID 集合（用 user_id + timestamp 作为唯一键）
-        const existSet = new Set();
-        (existData.data?.items || []).forEach(rec => {
-          const f = rec.fields;
-          const key = `${f['用户ID'] || ''}_${f['时间戳'] || ''}`;
-          existSet.add(key);
-        });
-
-        // 2. 逐条同步（跳过已存在的）
-        let created = 0, skipped = 0;
-        for (let i = 0; i < rows.length; i++) {
-          const row = rows[i];
-          const key = `${row.user_id}_${row.timestamp}`;
-          if (existSet.has(key)) {
-            skipped++;
-            continue;
-          }
-
-          // 解析 event_data
-          let eventData = {};
-          try { eventData = JSON.parse(row.event_data || '{}'); } catch(e) {}
-
-          const fields = {
-            '用户ID': row.user_id,
-            '手机号': row.phone || '',
-            '事件类型': row.event_type,
-            '事件数据': JSON.stringify(eventData),
-            '时间戳': row.timestamp,
-          };
-
-          await fetch(`${baseUrl}/records`, {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ fields }),
-          });
-          created++;
-
-          // 每 10 条暂停一下，避免频率限制
-          if (created % 10 === 0) await new Promise(r => setTimeout(r, 500));
-        }
-
-        res.json({ success: true, created, skipped, total: rows.length });
-      } catch (feishuErr) {
-        console.error('同步到飞书失败:', feishuErr);
-        res.status(500).json({ success: false, error: feishuErr.message });
-      }
-    })();
-  });
-});
+// (已移除) 数据现在直接写入飞书，无需同步
 
 
 
