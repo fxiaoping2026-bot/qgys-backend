@@ -671,6 +671,7 @@ db.run(`
     user_id TEXT NOT NULL,
     event_type TEXT NOT NULL,
     event_data TEXT,
+    phone TEXT DEFAULT '',
     timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
   )
 `, (err) => {
@@ -678,6 +679,12 @@ db.run(`
     console.error('❌ 创建追踪表失败:', err);
   } else {
     console.log('✅ 追踪事件表已就绪');
+    // 如果 phone 字段不存在则添加（兼容旧数据）
+    db.run(`ALTER TABLE track_events ADD COLUMN phone TEXT DEFAULT ''`, [], (alterErr) => {
+      if (alterErr && !alterErr.message.includes('duplicate column')) {
+        // 忽略已存在的错误
+      }
+    });
   }
 });
 
@@ -688,17 +695,18 @@ db.run(`CREATE INDEX IF NOT EXISTS idx_timestamp ON track_events(timestamp)`, ()
 
 // 接收追踪事件
 app.post('/api/track', (req, res) => {
-  const { userId, eventType, eventData } = req.body;
+  const { userId, eventType, eventData, phone } = req.body;
 
   if (!userId || !eventType) {
     return res.status(400).json({ error: '缺少必需参数' });
   }
 
   const data = eventData ? JSON.stringify(eventData) : null;
+  const phoneStr = (phone || '').trim();
 
   db.run(
-    'INSERT INTO track_events (user_id, event_type, event_data) VALUES (?, ?, ?)',
-    [userId, eventType, data],
+    'INSERT INTO track_events (user_id, event_type, event_data, phone) VALUES (?, ?, ?, ?)',
+    [userId, eventType, data, phoneStr],
     function(err) {
       if (err) {
         console.error('❌ 追踪事件存储失败:', err);
@@ -890,6 +898,7 @@ app.post('/api/analytics/sync-to-feishu', (req, res) => {
 
           const fields = {
             '用户ID': row.user_id,
+            '手机号': row.phone || '',
             '事件类型': row.event_type,
             '事件数据': JSON.stringify(eventData),
             '时间戳': row.timestamp,
