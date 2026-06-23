@@ -1310,7 +1310,7 @@ switchPage = function(page) {
 <div class="modal-overlay" id="checkoutModal" style="position:fixed;">
   <div class="modal-sheet" style="position:relative;">
     <button class="modal-close" onclick="closeCheckout()">✕</button>
-    <h3>确认订单</h3>
+    <h3>确认订单 <small style="font-size:11px;color:#ccc;font-weight:normal;">v3</small></h3>
     <div class="order-summary" id="orderSummary"></div>
     <div class="form-group">
       <label>联系方式（取餐时通知您）</label>
@@ -1924,11 +1924,16 @@ function selectPay(method) {
 }
 
 function submitOrder() {
+  // 立即给按钮反馈（防止用户重复点击）
+  const btn = document.querySelector('.btn-submit-order');
+  if (btn) { btn.textContent = '⏳ 处理中...'; btn.style.opacity = '0.7'; }
+
+  try {
   // 换购品门槛检查：移除不满足门槛的换购品
   enforcePromoRules();
   const phone = document.getElementById('inputPhone').value.trim();
-  if (!phone) { showToast('请填写联系方式'); return; }
-  if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('手机号格式不对哦'); return; }
+  if (!phone) { showToast('请填写联系方式'); resetSubmitBtn(); return; }
+  if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('手机号格式不对哦'); resetSubmitBtn(); return; }
   const entries = Object.entries(cart);
   const items = entries.map(([id, qty]) => {
     const item = findItem(id);
@@ -2002,6 +2007,18 @@ function submitOrder() {
 
   // 生成动态收款码（收钱吧预下单）
   generateDynamicQr(total, orderNo);
+
+  } catch(err) {
+    console.error('[submitOrder] 异常:', err);
+    alert('下单异常: ' + err.message + '\n\n请截图联系商家');
+    resetSubmitBtn();
+  }
+}
+
+/** 重置提交按钮状态 */
+function resetSubmitBtn() {
+  const btn = document.querySelector('.btn-submit-order');
+  if (btn) { btn.textContent = '立即下单'; btn.style.opacity = '1'; }
 }
 
 function confirmPayment() {
