@@ -537,13 +537,13 @@ function skpSign(bodyStr, key) {
 // ============================================================
 app.post('/api/shoukuanba/precreate', async (req, res) => {
   try {
-    let { totalAmountYuan, clientSn, subject, payway } = req.body;
-
-    // —— 参数校验 ——
-    if (!totalAmountYuan || !clientSn) {
-      return res.status(400).json({ success: false, error: '缺少 totalAmountYuan 或 clientSn' });
+    let { totalAmountYuan, totalAmount, clientSn, subject, payway } = req.body;
+    // 兼容前端两种参数名
+    const amount = Number(totalAmountYuan || totalAmount);
+    if (!amount || !clientSn) {
+      return res.status(400).json({ success: false, error: '缺少金额(totalAmount)或订单号(clientSn)' });
     }
-    if (Number(totalAmountYuan) <= 0) {
+    if (amount <= 0) {
       return res.status(400).json({ success: false, error: '金额必须大于0' });
     }
     // 确定使用的 sn 和 key（优先终端，未配置则降级用开发者）
@@ -559,7 +559,7 @@ app.post('/api/shoukuanba/precreate', async (req, res) => {
     }
 
     // —— 金额转分（收钱吧要求单位为分，字符串） ——
-    const totalAmountFen = String(Math.round(Number(totalAmountYuan) * 100));
+    const totalAmountFen = String(Math.round(amount * 100));
 
     // —— 构造收钱吧预下单请求 body ——
     const body = {
@@ -718,6 +718,8 @@ app.get('/api/analytics', async (req, res) => {
 
     // 今日独立访客数（基于 page_view 事件去重）
     const todayVisitorIds = new Set();
+    // 今日事件统计
+    const todayStats = {};
     // 全量用户（所有时间，用于复购等跨天统计）
     const allUserIds = new Set();
     const submitOrderUsers = {}; // user_id -> 下单次数
