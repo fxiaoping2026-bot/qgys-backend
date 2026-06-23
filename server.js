@@ -517,14 +517,15 @@ const crypto = require('crypto');
 const SKB_CONFIG = {
   // 收钱吧 API 域名（生产环境，文档P13明确指定）
   apiDomain:   process.env.SKB_API_DOMAIN   || 'https://vsi-api.shouqianba.com',
-  // 开发者序列号（vendor_sn）和密钥 — 收钱吧后台"开发者参数"页
-  vendorSn:   process.env.SKB_VENDOR_SN  || '91803652',
-  vendorKey:  process.env.SKB_VENDOR_KEY || '3362292761999c938a75ce30375da0',
-  // 终端号（terminal_sn）和终端密钥 — 激活终端后获得，未激活时可暂时用 vendor 代替
-  terminalSn:  process.env.SKB_TERMINAL_SN || '',
-  terminalKey: process.env.SKB_TERMINAL_KEY || '',
-  // 应用编号（app_id）
-  appId:      process.env.SKB_APP_ID      || '20282623G00D018178',
+  // 开发者序列号（vendor_sn）和密钥 — 收钱吧邮件提供（2026-06）
+  vendorSn:   process.env.SKB_VENDOR_SN  || '91803657',
+  vendorKey:  process.env.SKB_VENDOR_KEY || '33622997611999cd3a7f5c6e30375da0',
+  // 终端号（terminal_sn）和终端密钥 — 激活后获得，直接写死避免重复激活
+  // 激活响应在 biz_response 里：result.biz_response.terminal_sn / terminal_key
+  terminalSn:  process.env.SKB_TERMINAL_SN || '100118780056071075',
+  terminalKey: process.env.SKB_TERMINAL_KEY || '58d3d9659cb8138be2076a936af8b8e4',
+  // 应用编号（app_id）— C扫B 场景
+  appId:      process.env.SKB_APP_ID      || '2026062300011878',
 };
 
 // MD5 签名：请求 body 原始字符串 + key → 32位小写
@@ -584,14 +585,14 @@ async function getTerminalCredentials() {
     throw new Error('缺少 vendor_sn/vendor_key，无法激活终端');
   }
 
-  console.log('[收钱吧] 正在自动激活终端...');
+  console.log('[收钱吧] 正在自动激活终端... code=44645586');
   const activateBody = {
-    vendor_sn: SKB_CONFIG.vendorSn,
-    app_id:     '20282623G00D018178',
-    device_id:  'QGYS_WEB_' + Date.now(),
-    // 某些版本需要这些字段
+    vendor_sn:   SKB_CONFIG.vendorSn,
+    app_id:      '20282623G00D018178',
+    device_id:   'QGYS_WEB_H5PAY',
     device_type: 'WEB',
     os_info:     'Node.js',
+    code:        '44645586',  // 收钱吧提供的终端激活码
   };
   const bodyStr = JSON.stringify(activateBody);
   const sign    = skpSign(bodyStr, SKB_CONFIG.vendorKey);
