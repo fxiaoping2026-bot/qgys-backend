@@ -823,6 +823,7 @@ app.get('/api/analytics/detail', async (req, res) => {
 
     // 将Set转为数字以便JSON序列化
     const dailyOutput = {};
+    const aggregatedEvents = {}; // 聚合所有日期的事件（给漏斗图用）
     Object.keys(dailyStats).forEach(date => {
       dailyOutput[date] = {};
       Object.keys(dailyStats[date]).forEach(etype => {
@@ -830,12 +831,23 @@ app.get('/api/analytics/detail', async (req, res) => {
           users: dailyStats[date][etype].users.size,
           events: dailyStats[date][etype].events
         };
+        // 聚合到全局events
+        if (!aggregatedEvents[etype]) aggregatedEvents[etype] = { users: new Set(), events: 0 };
+        dailyStats[date][etype].users.forEach(u => aggregatedEvents[etype].users.add(u));
+        aggregatedEvents[etype].events += dailyStats[date][etype].events;
       });
+    });
+
+    // 将聚合的Set也转为数字
+    const eventsOutput = {};
+    Object.keys(aggregatedEvents).forEach(k => {
+      eventsOutput[k] = { users: aggregatedEvents[k].users.size, events: aggregatedEvents[k].events };
     });
 
     res.json({
       dailyStats: dailyOutput,
-      hotItems
+      hotItems,
+      events: eventsOutput  // 兼容前端 renderFunnelChart
     });
   } catch (err) {
     console.error('❌ 详细统计查询失败:', err);
