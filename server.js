@@ -744,6 +744,12 @@ app.get('/api/shoukuanba/pay-redirect', async (req, res) => {
     const sign = signWapParams(payParams, cred.key);
     payParams.sign = sign;
 
+    // 调试：打印完整请求参数（不含key）
+    const debugParams = { ...payParams };
+    delete debugParams.sign;
+    console.log(`[PAY-REDIRECT] 请求参数:`, JSON.stringify(debugParams));
+    console.log(`[PAY-REDIRECT] 签名: ${sign}`);
+
     // 后端直接调用收钱吧API（server-side fetch）
     const apiUrl = `${SKB_CONFIG.apiDomain}/upay/v2/pay`;
     const formData = Object.entries(payParams)
