@@ -793,17 +793,29 @@ app.get('/api/shoukuanba/pay-redirect', async (req, res) => {
         return res.send(responseText);
       }
     } else {
-      // 请求失败
-      const errorMsg = data.error_message || data.message || data.msg || '未知错误';
+      // 请求失败：把完整请求和响应都返回，方便调试
+      const debugInfo = {
+        request_params: debugParams,
+        signature: sign,
+        api_response: data,
+      };
       console.error(`[PAY-REDIRECT] 收钱吧API错误:`, data);
       return res.status(500).send(`
         <!DOCTYPE html>
         <html>
-        <head><meta charset="utf-8"><title>支付失败</title></head>
-        <body style="font-family:sans-serif;text-align:center;padding:40px;background:#fff;">
+        <head><meta charset="utf-8"><title>支付失败 - 调试信息</title></head>
+        <body style="font-family:sans-serif;padding:20px;background:#fff;max-width:600px;margin:0 auto;">
           <h2 style="color:#e53935;">⚠️ 支付请求失败</h2>
-          <p style="color:#666;">错误代码: ${data.result_code || data.code || '未知'}</p>
-          <p style="color:#666;">${errorMsg}</p>
+          <p><b>错误代码:</b> ${data.result_code || data.code || '未知'}</p>
+          <p><b>错误信息:</b> ${errorMsg}</p>
+          <hr>
+          <h3>调试信息（供开发者排查）</h3>
+          <p><b>请求参数:</b></p>
+          <pre style="background:#f5f5f5;padding:12px;border-radius:8px;overflow-x:auto;font-size:12px;">${JSON.stringify(debugParams, null, 2)}</pre>
+          <p><b>签名:</b> <code>${sign}</code></p>
+          <p><b>API完整响应:</b></p>
+          <pre style="background:#f5f5f5;padding:12px;border-radius:8px;overflow-x:auto;font-size:12px;">${responseText}</pre>
+          <br>
           <button onclick="window.history.back()" style="padding:12px 24px;background:#f5a623;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;">返回重新下单</button>
         </body>
         </html>
