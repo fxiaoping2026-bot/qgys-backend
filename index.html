@@ -3980,28 +3980,24 @@ async function generateDynamicQr(totalAmount, clientSn) {
   showPayState('loading');
 
   try {
-    const res  = await fetch(API_BASE + '/api/shoukuanba/precreate', {
+    const res  = await fetch(API_BASE + '/api/shoukuanba/wap-pay-url', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ totalAmount: totalAmount, clientSn: clientSn })
     });
     const data = await res.json();
 
-    if (!data.success || !data.qrCode) {
-      console.error('预下单失败:', data.error);
+    if (!data.success || !data.payUrl) {
+      console.error('跳转支付URL生成失败:', data.error);
       showPayState('error', data.error || '付款链接生成失败');
       return;
     }
 
-    // 保存支付URL，显示"去付款"按钮
-    _currentPayOrder.payUrl = data.qrCode;
-    showPayState('ready');
+    // 保存支付URL
+    _currentPayOrder.payUrl = data.payUrl;
 
-    // 手机端自动跳转（延迟1秒让用户看到按钮）
-    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-    if (isMobile) {
-      setTimeout(() => doRedirectToPay(), 1200);
-    }
+    // 直接跳转（不再显示"去付款"按钮）
+    window.location.href = data.payUrl;
 
   } catch (err) {
     console.error('生成付款链接失败:', err);

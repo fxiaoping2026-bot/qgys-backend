@@ -515,19 +515,48 @@ const crypto = require('crypto');
 
 // 收钱吧配置（优先读环境变量，未配置时预下单接口会返回友好错误）
 const SKB_CONFIG = {
-  // 收钱吧 API 域名
-  apiDomain:   process.env.SKB_API_DOMAIN   || 'https://api.shouqianba.com',
+  // 收钱吧 API 域名（生产环境，文档P13明确指定）
+  apiDomain:   process.env.SKB_API_DOMAIN   || 'https://vsi-api.shouqianba.com',
   // 开发者序列号（vendor_sn）和密钥 — 收钱吧后台"开发者参数"页
   vendorSn:   process.env.SKB_VENDOR_SN  || '91803652',
   vendorKey:  process.env.SKB_VENDOR_KEY || '3362292761999c938a75ce30375da0',
   // 终端号（terminal_sn）和终端密钥 — 激活终端后获得，未激活时可暂时用 vendor 代替
   terminalSn:  process.env.SKB_TERMINAL_SN || '',
   terminalKey: process.env.SKB_TERMINAL_KEY || '',
+  // 应用编号（app_id）
+  appId:      process.env.SKB_APP_ID      || '20282623G00D018178',
 };
 
 // MD5 签名：请求 body 原始字符串 + key → 32位小写
+// 适用于：激活/签到/查询/退款 等非支付接口（文档P15）
 function skpSign(bodyStr, key) {
   return crypto.createHash('md5').update(bodyStr + key, 'utf8').digest('hex').toLowerCase();
+}
+
+// ============================================================
+// 跳转支付接口签名（文档P27）
+// 规则：URL参数按ASCII排序 → 拼成 key=value&... → 加 &key=密钥 → MD5大写
+// 适用于：WAP支付URL拼接（前端跳转支付用）
+// ============================================================
+function signWapParams(params, key) {
+  // 1. 过滤 sign、sign_type 和空值
+  const filtered = {};
+  for (const [k, v] of Object.entries(params)) {
+    if (k !== 'sign' && k !== 'sign_type' && v !== undefined && v !== null && String(v) !== '') {
+      filtered[k] = String(v);
+    }
+  }
+  // 2. 按ASCII升序排序
+  const sortedKeys = Object.keys(filtered).sort();
+  // 3. 拼成 key=value&key2=value2
+  let str = '';
+  for (const k of sortedKeys) {
+    str += (str ? '&' : '') + k + '=' + filtered[k];
+  }
+  // 4. 加 &key=密钥
+  str += '&key=' + key;
+  // 5. MD5 → 转大写
+  return crypto.createHash('md5').update(str, 'utf8').digest('hex').toUpperCase();
 }
 
 // ============================================================
@@ -602,18 +631,18 @@ async function getTerminalCredentials() {
 // 请求：{ totalAmountYuan: number, clientSn: string, subject?: string, payway?: string }
 // 返回：{ success, qrCode, sn }  （qrCode 为支付平台二维码链接，金额已锁定）
 // ============================================================
-app.post('/api/shoukuanba/precreate', async (req, res) => {
+app.post('/api/shoukuanba/wap-pay-url', async (req, res) => {
   try {
-    let { totalAmountYuan, totalAmount, clientSn, subject, payway } = req.body;
-    // 兼容前端两种参数名
-    const amount = Number(totalAmountYuan || totalAmount);
+    let { totalAmount, totalAmountYuan, clientSn, subject, operator, returnUrl } = req.body;
+    const amount = Number(totalAmount || totalAmountYuan);
     if (!amount || !clientSn) {
       return res.status(400).json({ success: false, error: '缺少金额(totalAmount)或订单号(clientSn)' });
     }
     if (amount <= 0) {
       return res.status(400).json({ success: false, error: '金额必须大于0' });
     }
-    // —— 获取终端凭证（自动激活或用配置值） ——
+
+    // —— 获取终端凭证 ——
     let useSn, useKey;
     try {
       const cred = await getTerminalCredentials();
@@ -623,78 +652,39 @@ app.post('/api/shoukuanba/precreate', async (req, res) => {
       return res.status(500).json({
         success: false,
         error: `获取收钱吧终端凭证失败: ${e.message}`,
-        needTerminal: true,   // 前端可据此提示
+        needTerminal: true,
       });
     }
 
-    // —— 金额转分（收钱吧要求单位为分，字符串） ——
+    // —— 金额转分 ——
     const totalAmountFen = String(Math.round(amount * 100));
 
-    // —— 构造收钱吧预下单请求 body ——
-    const body = {
+    // —— 拼接跳转支付URL参数（文档P26-27） ——
+    const params = {
       terminal_sn: useSn,
-      client_sn:   String(clientSn),
+      client_sn:    String(clientSn),
       total_amount: totalAmountFen,
-      payway:       payway || '3',
-      subject:      subject || '企港渔叔下单',
-      operator:     '企港渔叔',
+      subject:      subject  || '企港渔叔-海鲜点餐',
+      operator:     operator || '企港渔叔',
+      return_url:   returnUrl || '',
     };
-    const bodyStr = JSON.stringify(body);
-    const sign    = skpSign(bodyStr, useKey);
 
-    // —— 发起预下单请求 ——
-    const apiRes  = await fetch(`${SKB_CONFIG.apiDomain}/upay/v2/precreate`, {
-      method:  'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `${useSn} ${sign}`,
-      },
-      body: bodyStr,
-    });
-    const apiData = await apiRes.json();
+    // —— 签名（跳转支付专用：参数排序+MD5大写，文档P27） ——
+    const sign = signWapParams(params, useKey);
+    params.sign = sign;
 
-    // —— 解析返回 ——
-    // 通讯层失败（参数错误、签名错误等）
-    if (apiData.result_code !== '200') {
-      return res.status(500).json({
-        success: false,
-        error: apiData.error_message || '收钱吧通讯失败',
-        errorCode: apiData.error_code || '',
-      });
-    }
-    // 业务层失败（商户订单号重复、余额不足等）
-    if (!apiData.biz_response || apiData.biz_response.result_code !== 'PRECREATE_SUCCESS') {
-      return res.status(500).json({
-        success: false,
-        error: (apiData.biz_response && apiData.biz_response.error_message) || '预下单失败',
-        errorCode: apiData.biz_response ? apiData.biz_response.result_code : '',
-      });
-    }
+    // —— 构造完整支付URL ——
+    const payUrl = `${SKB_CONFIG.apiDomain}/upay/v2/pay?${new URLSearchParams(params).toString()}`;
+    console.log(`✅ 收钱吧跳转支付URL生成成功：clientSn=${clientSn}, amount=${amount}元`);
 
-    // —— 成功：返回 qr_code（支付平台二维码链接，金额已锁定） ——
-    const data   = apiData.biz_response.data || {};
-    const qrCode = data.qr_code;   // 如 "https://qr.alipay.com/..."
-    const sn     = data.sn;         // 收钱吧唯一订单号
-
-    if (!qrCode) {
-      return res.status(500).json({ success: false, error: '收钱吧未返回二维码链接' });
-    }
-
-    console.log(`✅ 收钱吧预下单成功：clientSn=${clientSn}, sn=${sn}, amount=${totalAmountYuan}元`);
-    res.json({ success: true, qrCode, sn });
+    res.json({ success: true, payUrl, sn: '' });
   } catch (err) {
-    console.error('收钱吧预下单异常:', err);
+    console.error('收钱吧跳转支付URL生成异常:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// ============================================================
-// POST /api/shoukuanba/query
-// 查询订单支付状态（用于前端轮询）
-// 请求：{ clientSn: string }
-// 返回：{ success, orderStatus, payStatus }
-//   orderStatus: "CREATED"=待支付, "PAID"=已支付, "CANCELLED"=已取消
-// ============================================================
+// ====== POST /api/shoukuanba/query
 app.post('/api/shoukuanba/query', async (req, res) => {
   try {
     const { clientSn } = req.body;
