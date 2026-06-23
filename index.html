@@ -1337,7 +1337,7 @@ switchPage = function(page) {
     </div>
   </div>
 
-  <!-- 收款码卡片（核心区域） -->
+  <!-- 跳转支付卡片（核心区域） -->
   <div class="pay-qr-container" style="
     background: #fff;
     border-radius: 16px;
@@ -1347,32 +1347,65 @@ switchPage = function(page) {
     border: 1px solid #f0f0f0;
     margin-bottom: 18px;
   ">
-    <!-- 二维码 -->
-    <div style="font-size:13px;color:#999;margin-bottom:12px;">长按二维码识别付款</div>
-    <!-- 动态收款二维码 -->
-    <div id="dynamicQrArea" style="min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;margin-bottom:8px;">
-      <div id="qrLoading" style="font-size:14px;color:#999;">正在生成动态收款码...</div>
-      <img id="dynamicQrImg" src="" alt="动态收款码" style="width:260px;height:260px;border-radius:8px;border:1px solid #eee;display:none;">
-      <div id="qrError" style="display:none;font-size:13px;color:#e8441a;background:#fff5f5;padding:10px 14px;border-radius:8px;margin-top:8px;max-width:260px;text-align:center;">⚠️ 动态码生成失败，请使用静态收款码</div>
+    <!-- 跳转支付区域 -->
+    <div id="payRedirectArea">
+      <!-- 状态1：等待跳转（默认） -->
+      <div id="redirectReady" style="display:none;">
+        <div style="font-size:40px;margin-bottom:12px;">💰</div>
+        <div style="font-size:17px;font-weight:700;color:#333;margin-bottom:6px;">订单已创建</div>
+        <div style="font-size:14px;color:#666;margin-bottom:16px;">点击下方按钮跳转到收钱吧付款</div>
+        <button onclick="doRedirectToPay()" style="
+          width:100%;border-radius:12px;padding:16px;font-size:18px;font-weight:700;
+          background:linear-gradient(135deg,#f5a623,#e8930c);color:#fff;border:none;cursor:pointer;
+          box-shadow:0 4px 12px rgba(245,166,35,0.3);
+        ">🔗 去收钱吧付款</button>
+      </div>
+
+      <!-- 状态2：正在生成链接 -->
+      <div id="redirectLoading" style="">
+        <div style="font-size:36px;margin-bottom:12px;animation:spin 1s linear infinite;">⏳</div>
+        <div style="font-size:15px;color:#555;font-weight:600;">正在生成付款链接...</div>
+        <div style="font-size:13px;color:#999;margin-top:8px;">即将自动跳转到收钱吧</div>
+      </div>
+
+      <!-- 状态3：跳转失败 -->
+      <div id="redirectError" style="display:none;">
+        <div style="font-size:36px;margin-bottom:12px;">⚠️</div>
+        <div style="font-size:15px;color:#e8441a;font-weight:600;" id="redirectErrorMsg">付款链接生成失败</div>
+        <button onclick="retryRedirectToPay()" style="
+          margin-top:12px;padding:10px 28px;font-size:14px;font-weight:600;
+          background:var(--primary);color:#fff;border:none;border-radius:8px;cursor:pointer;
+        ">🔄 重试</button>
+        <!-- 静态备用码（极端情况） -->
+        <button onclick="showStaticFallback()" style="
+          display:block;margin:10px auto 0;padding:8px 20px;font-size:13px;
+          background:none;border:1px solid #ddd;color:#999;border-radius:8px;cursor:pointer;
+        ">使用静态收款码</button>
+      </div>
     </div>
-    <!-- 静态收款码（动态码失败时的备用） -->
-    <div id="staticQrFallback" style="display:none;margin-bottom:8px;">
-      <div style="font-size:13px;color:#999;margin-bottom:8px;">动态码暂不可用，请扫码付款</div>
-      <img src="qrcode-pay.jpg" alt="静态收款码" style="width:260px;height:auto;border-radius:8px;border:1px solid #eee;display:block;margin:0 auto;">
+
+    <!-- 静态备用收款码（隐藏，仅错误时显示） -->
+    <div id="staticQrFallback" style="display:none;text-align:center;">
+      <div style="font-size:13px;color:#999;margin-bottom:10px;">动态码暂不可用，请扫码付款</div>
+      <img src="qrcode-pay.jpg" alt="静态收款码" style="width:220px;height:auto;border-radius:8px;border:1px solid #eee;display:block;margin:0 auto;">
+      <div style="margin-top:10px;background:#fafafa;border-radius:8px;padding:10px 14px;text-align:left;font-size:11px;color:#888;line-height:1.9;">
+        <div>① 长按二维码 → 选择「识别二维码」</div>
+        <div>② 输入金额 <b id="payAmountInline" style="color:var(--primary);">¥0.00</b> → 完成付款</div>
+        <div>③ 返回本页 ↓ 勾选确认提交</div>
+      </div>
     </div>
 
     <!-- 支付方式图标 -->
-    <div style="display:flex;justify-content:center;gap:16px;margin-top:12px;align-items:center;">
+    <div id="payMethodIcons" style="display:flex;justify-content:center;gap:16px;margin-top:16px;align-items:center;">
       <span style="font-size:18px;" title="微信支付">💚</span>
       <span style="font-size:18px;" title="支付宝">💙</span>
       <span style="font-size:18px;" title="云闪付">🧡</span>
     </div>
 
-    <!-- 简洁步骤提示 -->
-    <div style="margin-top:16px;background:#fafafa;border-radius:8px;padding:10px 14px;text-align:left;font-size:12px;color:#888;line-height:1.9;">
-      <div>① 长按二维码 → 选择「识别二维码」</div>
-      <div>② 输入金额 <b id="payAmountInline" style="color:var(--primary);">¥0.00</b> → 完成付款</div>
-      <div>③ 返回本页 ↓ 勾选确认提交</div>
+    <!-- 步骤提示（跳转后显示） -->
+    <div id="payStepTips" style="display:none;margin-top:16px;background:#fafafa;border-radius:8px;padding:10px 14px;text-align:left;font-size:12px;color:#888;line-height:1.9;">
+      <div>① 已在收钱吧完成付款 ✅</div>
+      <div>② 返回本页 ↓ 勾选确认提交</div>
     </div>
   </div>
 
@@ -3929,104 +3962,200 @@ switchPage = function(page) {
 let _payPollTimer = null;
 
 // 调用收钱吧预下单接口，生成动态收款二维码
-async function generateDynamicQr(totalAmount, clientSn) {
-  // 重置UI
-  const dynamicArea  = document.getElementById('dynamicQrArea');
-  const qrLoading    = document.getElementById('qrLoading');
-  const dynamicImg   = document.getElementById('dynamicQrImg');
-  const qrError      = document.getElementById('qrError');
-  const staticFallback = document.getElementById('staticQrFallback');
+// ====== 跳转支付（替代扫码支付）======
 
-  if (dynamicArea)  dynamicArea.style.display  = 'flex';
-  if (qrLoading)    qrLoading.style.display    = '';
-  if (dynamicImg)  { dynamicImg.style.display = 'none'; dynamicImg.src = ''; }
-  if (qrError)      qrError.style.display      = 'none';
-  if (staticFallback) staticFallback.style.display = 'none';
+// 当前订单信息（跨函数共享）
+let _currentPayOrder = { total: 0, orderNo: '', clientSn: '' };
+
+/**
+ * 调用收钱吧预下单 → 获取付款链接 → 自动/手动跳转
+ * @param {number} totalAmount - 订单金额（元）
+ * @param {string} clientSn   - 订单号
+ */
+async function generateDynamicQr(totalAmount, clientSn) {
+  // 保存当前订单信息
+  _currentPayOrder = { total: totalAmount, orderNo: clientSn, clientSn: clientSn };
+
+  // 显示"正在生成链接"
+  showPayState('loading');
 
   try {
     const res  = await fetch(API_BASE + '/api/shoukuanba/precreate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ totalAmountYuan: totalAmount, clientSn: clientSn })
+      body: JSON.stringify({ totalAmount: totalAmount, clientSn: clientSn })
     });
     const data = await res.json();
 
     if (!data.success || !data.qrCode) {
       console.error('预下单失败:', data.error);
-      showStaticQrFallback();
+      showPayState('error', data.error || '付款链接生成失败');
       return;
     }
 
-    // 用 qrserver.com 生成二维码图片
-    const qrImgUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=' + encodeURIComponent(data.qrCode);
-    if (dynamicImg) {
-      dynamicImg.onload = () => {
-        if (qrLoading) qrLoading.style.display = 'none';
-        dynamicImg.style.display = 'block';
-      };
-      dynamicImg.onerror = () => { showStaticQrFallback(); };
-      dynamicImg.src = qrImgUrl;
+    // 保存支付URL，显示"去付款"按钮
+    _currentPayOrder.payUrl = data.qrCode;
+    showPayState('ready');
+
+    // 手机端自动跳转（延迟1秒让用户看到按钮）
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    if (isMobile) {
+      setTimeout(() => doRedirectToPay(), 1200);
     }
 
-    // 启动轮询检测支付状态
-    startPaymentPolling(clientSn);
-
   } catch (err) {
-    console.error('生成动态收款码失败:', err);
-    showStaticQrFallback();
+    console.error('生成付款链接失败:', err);
+    showPayState('error', '网络异常，请重试');
   }
 }
 
-// 启动轮询
-function startPaymentPolling(clientSn) {
-  stopPaymentPolling();
-  _payPollTimer = setInterval(async () => {
-    try {
-      const res  = await fetch(API_BASE + '/api/shoukuanba/query', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clientSn: clientSn })
-      });
-      const data = await res.json();
-      if (data.success && (data.orderStatus === 'PAID' || data.payStatus === 'SUCCESS')) {
-        stopPaymentPolling();
-        onPaymentDetected(clientSn);
+/** 显示支付页的不同状态 */
+function showPayState(state, errMsg) {
+  const ready   = document.getElementById('redirectReady');
+  const loading = document.getElementById('redirectLoading');
+  const error   = document.getElementById('redirectError');
+  const icons   = document.getElementById('payMethodIcons');
+  const tips    = document.getElementById('payStepTips');
+
+  if (ready)   ready.style.display   = 'none';
+  if (loading) loading.style.display = 'none';
+  if (error)   error.style.display   = 'none';
+  if (icons)   icons.style.display   = 'none';
+  if (tips)    tips.style.display    = 'none';
+
+  switch(state) {
+    case 'loading':
+      if (loading) loading.style.display = '';
+      break;
+    case 'ready':
+      if (ready) ready.style.display = '';
+      if (icons) icons.style.display = '';
+      break;
+    case 'error':
+      if (error) {
+        error.style.display = '';
+        const msgEl = document.getElementById('redirectErrorMsg');
+        if (msgEl && errMsg) msgEl.textContent = '⚠️ ' + errMsg;
       }
-    } catch (e) { /* 忽略单次轮询错误 */ }
-  }, 3000);
+      if (icons) icons.style.display = '';
+      break;
+  }
 }
 
-// 停止轮询
-function stopPaymentPolling() {
-  if (_payPollTimer) { clearInterval(_payPollTimer); _payPollTimer = null; }
+/** 用户点击"去收钱吧付款"按钮 */
+function doRedirectToPay() {
+  if (!_currentPayOrder.payUrl) {
+    showToast('付款链接未准备好'); return;
+  }
+  // 记录跳转时间（用于检测用户是否已返回）
+  localStorage.setItem('qgys_pay_redirect_time', Date.now());
+  localStorage.setItem('qgys_pay_redirect_order', _currentPayOrder.orderNo);
+
+  // 跳转到收钱吧付款页面
+  window.location.href = _currentPayOrder.payUrl;
 }
 
-// 动态码失败时显示静态备用码
-function showStaticQrFallback() {
-  const dynamicArea  = document.getElementById('dynamicQrArea');
-  const qrError      = document.getElementById('qrError');
+/** 重试生成付款链接 */
+function retryRedirectToPay() {
+  if (_currentPayOrder.total && _currentPayOrder.clientSn) {
+    generateDynamicQr(_currentPayOrder.total, _currentPayOrder.clientSn);
+  }
+}
+
+/** 显示静态备用收款码 */
+function showStaticFallback() {
+  const redirectArea = document.getElementById('payRedirectArea');
   const staticFallback = document.getElementById('staticQrFallback');
-  if (dynamicArea)  dynamicArea.style.display  = 'none';
-  if (qrError)      qrError.style.display      = '';
+  const tips          = document.getElementById('payStepTips');
+  if (redirectArea)   redirectArea.style.display   = 'none';
   if (staticFallback) staticFallback.style.display = '';
+  if (tips)           tips.style.display           = 'none';
+
+  // 同步金额到备用区域
+  const payAmountInline = document.getElementById('payAmountInline');
+  if (payAmountInline && _currentPayOrder.total) {
+    payAmountInline.textContent = '¥' + _currentPayOrder.total.toFixed(2);
+  }
 }
 
-// 检测到付款成功
-function onPaymentDetected(clientSn) {
-  // 自动解锁勾选框
+// ====== 支付返回检测 =====
+
+let _payReturnTimer = null;
+
+/**
+ * 启动检测用户从收钱吧返回
+ * 原理：页面 visibility 变化时判断用户是否回来了
+ */
+function startPayPageWatch() {
+  stopPayPageWatch();
+  // 监听页面可见性变化（用户从收钱吧切回来时触发）
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  // 也用定时器兜底（某些浏览器不支持visibilitychange）
+  _payReturnTimer = setInterval(checkUserReturned, 2000);
+}
+
+function stopPayPageWatch() {
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  if (_payReturnTimer) { clearInterval(_payReturnTimer); _payReturnTimer = null; }
+}
+
+function onVisibilityChange() {
+  if (!document.hidden) {
+    // 页面重新可见 → 用户可能从收钱吧返回了
+    handleUserReturn();
+  }
+}
+
+function checkUserReturned() {
+  // 检查localStorage中的跳转标记
+  const redirectTime = parseInt(localStorage.getItem('qgys_pay_redirect_time') || '0');
+  if (redirectTime > 0) {
+    // 曾经跳转过，现在检查是否还在本页面（没被跳转走）
+    // 如果距离跳转超过5秒且仍在当前页面，说明用户可能已返回或取消了
+    const elapsed = Date.now() - redirectTime;
+    if (elapsed > 5000 && !document.hidden) {
+      handleUserReturn();
+    }
+  }
+}
+
+function handleUserReturn() {
+  stopPayPageWatch();
+  // 清除跳转标记
+  localStorage.removeItem('qgys_pay_redirect_time');
+  localStorage.removeItem('qgys_pay_redirect_order');
+
+  // 切换UI为"已完成付款"状态
+  showPayState('ready');
+  const tips = document.getElementById('payStepTips');
+  if (tips) tips.style.display = '';
+
+  // 自动解锁确认按钮
+  autoUnlockConfirm();
+}
+
+/** 自动解锁"我已完成付款"按钮 */
+function autoUnlockConfirm() {
   const checkbox = document.getElementById('payConfirmCheck');
+  const btnDone  = document.getElementById('btnPayDone');
   if (checkbox) {
     checkbox.disabled = false;
     checkbox.style.opacity = '1';
     checkbox.style.cursor  = 'pointer';
   }
-  showToast('✅ 已检测到付款，请勾选确认');
+  if (btnDone) {
+    btnDone.disabled = false;
+    btnDone.style.opacity = '1';
+    btnDone.style.cursor = 'pointer';
+  }
+  showToast('💰 请确认您已完成付款');
 }
 
-// 关闭支付页时停止轮询
+// 关闭支付页时清理
 const _origHidePayPage = hidePayPage || function(){};
 function hidePayPage() {
-  stopPaymentPolling();
+  stopPayPageWatch();
+  _currentPayOrder = { total: 0, orderNo: '', clientSn: '', payUrl: '' };
   if (_origHidePayPage) _origHidePayPage();
 }
 </body>
