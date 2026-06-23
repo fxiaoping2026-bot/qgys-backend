@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>企港渔叔社区海鲜厨房 - 扫码点餐 v4</title>
+<title>企港渔叔社区海鲜厨房 - 扫码点餐 v5.1</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   :root {
@@ -1609,7 +1609,7 @@ switchPage = function(page) {
 <div class="toast" id="toast"></div>
 
 <script>
-// ===== 【v4】支付核心函数 —— 放在最前面确保全局可用 =====
+// ===== 【v5.1】支付核心函数 —— POST表单跳转，解决Method Not Allowed =====
 let _currentPayOrder = { total: 0, orderNo: '', clientSn: '', payUrl: '' };
 
 async function generateDynamicQr(totalAmount, clientSn) {
@@ -1617,8 +1617,8 @@ async function generateDynamicQr(totalAmount, clientSn) {
   showPayState('loading');
 
   const verEl = document.getElementById('payDebugInfo');
-  if (verEl) verEl.textContent = 'v4-active | ' + new Date().toLocaleTimeString();
-  console.log('[PAY v4] 开始生成付款链接...', { totalAmount, clientSn, API_BASE });
+  if (verEl) verEl.textContent = 'v5.1-active | ' + new Date().toLocaleTimeString();
+  console.log('[PAY v5.1] 开始支付跳转...', { totalAmount, clientSn, API_BASE });
 
   // 构造 return_url（付款后自动跳回订单状态页）
   const returnUrl = window.location.origin + '?orderNo=' + encodeURIComponent(clientSn) + '&total=' + encodeURIComponent(totalAmount) + '&show=status';
