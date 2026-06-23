@@ -515,11 +515,13 @@ const crypto = require('crypto');
 
 // 收钱吧配置（优先读环境变量，未配置时预下单接口会返回友好错误）
 const SKB_CONFIG = {
-  // 收钱吧 API 域名（生产环境）
+  // 收钱吧 API 域名
   apiDomain:   process.env.SKB_API_DOMAIN   || 'https://api.shouqianba.com',
-  // 终端号（terminal_sn）：收钱吧商户后台 → 终端管理 查看
+  // 开发者序列号（vendor_sn）和密钥 — 收钱吧后台"开发者参数"页
+  vendorSn:   process.env.SKB_VENDOR_SN  || '91803652',
+  vendorKey:  process.env.SKB_VENDOR_KEY || '3362292761999c938a75ce30375da0',
+  // 终端号（terminal_sn）和终端密钥 — 激活终端后获得，未激活时可暂时用 vendor 代替
   terminalSn:  process.env.SKB_TERMINAL_SN || '',
-  // 终端密钥（terminal_key）：激活/签到后获得，或联系收钱吧客服获取
   terminalKey: process.env.SKB_TERMINAL_KEY || '',
 };
 
@@ -544,11 +546,15 @@ app.post('/api/shoukuanba/precreate', async (req, res) => {
     if (Number(totalAmountYuan) <= 0) {
       return res.status(400).json({ success: false, error: '金额必须大于0' });
     }
-    if (!SKB_CONFIG.terminalSn || !SKB_CONFIG.terminalKey) {
+    // 确定使用的 sn 和 key（优先终端，未配置则降级用开发者）
+    const useSn  = SKB_CONFIG.terminalSn  || SKB_CONFIG.vendorSn;
+    const useKey = SKB_CONFIG.terminalKey || SKB_CONFIG.vendorKey;
+
+    if (!useSn || !useKey) {
       return res.status(500).json({
         success: false,
-        error: '收钱吧配置未填写（SKB_TERMINAL_SN / SKB_TERMINAL_KEY）',
-        needConfig: true,   // 前端可据此提示用户联系管理员
+        error: '收钱吧配置未填写（需配置终端或开发者凭证）',
+        needConfig: true,
       });
     }
 
@@ -557,22 +563,22 @@ app.post('/api/shoukuanba/precreate', async (req, res) => {
 
     // —— 构造收钱吧预下单请求 body ——
     const body = {
-      terminal_sn: SKB_CONFIG.terminalSn,
-      client_sn: String(clientSn),
-      total_amount: totalAmountFen,       // 单位：分，字符串
-      payway:      payway || '3',         // 默认微信（3=微信，1=支付宝，4=百度钱包…）
-      subject:     subject || '企港渔叔下单',
-      operator:    '企港渔叔',
+      terminal_sn: useSn,
+      client_sn:   String(clientSn),
+      total_amount: totalAmountFen,
+      payway:       payway || '3',
+      subject:      subject || '企港渔叔下单',
+      operator:     '企港渔叔',
     };
     const bodyStr = JSON.stringify(body);
-    const sign    = skpSign(bodyStr, SKB_CONFIG.terminalKey);
+    const sign    = skpSign(bodyStr, useKey);
 
     // —— 发起预下单请求 ——
     const apiRes  = await fetch(`${SKB_CONFIG.apiDomain}/upay/v2/precreate`, {
       method:  'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `${SKB_CONFIG.terminalSn} ${sign}`,
+        'Authorization': `${useSn} ${sign}`,
       },
       body: bodyStr,
     });
@@ -624,19 +630,24 @@ app.post('/api/shoukuanba/query', async (req, res) => {
   try {
     const { clientSn } = req.body;
     if (!clientSn) return res.status(400).json({ success: false, error: '缺少 clientSn' });
-    if (!SKB_CONFIG.terminalSn || !SKB_CONFIG.terminalKey) {
+
+    // 确定使用的 sn 和 key（优先终端，未配置则降级用开发者）
+    const useSn  = SKB_CONFIG.terminalSn  || SKB_CONFIG.vendorSn;
+    const useKey = SKB_CONFIG.terminalKey || SKB_CONFIG.vendorKey;
+
+    if (!useSn || !useKey) {
       return res.status(500).json({ success: false, error: '收钱吧配置未填写' });
     }
 
-    const body    = { terminal_sn: SKB_CONFIG.terminalSn, client_sn: String(clientSn) };
+    const body    = { terminal_sn: useSn, client_sn: String(clientSn) };
     const bodyStr = JSON.stringify(body);
-    const sign    = skpSign(bodyStr, SKB_CONFIG.terminalKey);
+    const sign    = skpSign(bodyStr, useKey);
 
     const apiRes  = await fetch(`${SKB_CONFIG.apiDomain}/upay/v2/query`, {
       method:  'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `${SKB_CONFIG.terminalSn} ${sign}`,
+        'Authorization': `${useSn} ${sign}`,
       },
       body: bodyStr,
     });
