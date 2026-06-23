@@ -525,9 +525,76 @@ const SKB_CONFIG = {
   terminalKey: process.env.SKB_TERMINAL_KEY || '',
 };
 
-// MD5 签名：请求 body 原始字符串 + terminalKey → 32位小写
+// MD5 签名：请求 body 原始字符串 + key → 32位小写
 function skpSign(bodyStr, key) {
   return crypto.createHash('md5').update(bodyStr + key, 'utf8').digest('hex').toLowerCase();
+}
+
+// ============================================================
+// 终端激活（用 vendor_sn 获取 terminal_sn + terminal_key）
+// 收钱吧规则：支付接口必须用 terminal_sn 签名，vendor_sn 不能直接用于收款
+// ============================================================
+let _cachedTerminal = { sn: null, key: null, expireAt: 0 };
+const TERMINAL_CACHE_HRS = 23;  // 缓存23小时（收钱吧terminal有有效期）
+
+/**
+ * 获取可用的 terminal_sn / terminal_key
+ * 优先用配置的值；若未配置则自动调激活接口获取并缓存
+ */
+async function getTerminalCredentials() {
+  // 1. 已配置了 terminal → 直接返回
+  if (SKB_CONFIG.terminalSn && SKB_CONFIG.terminalKey) {
+    return { sn: SKB_CONFIG.terminalSn, key: SKB_CONFIG.terminalKey };
+  }
+  // 2. 内存缓存还有效
+  if (_cachedTerminal.sn && Date.now() < _cachedTerminal.expireAt) {
+    return { sn: _cachedTerminal.sn, key: _cachedTerminal.key };
+  }
+  // 3. 需要自动激活
+  if (!SKB_CONFIG.vendorSn || !SKB_CONFIG.vendorKey) {
+    throw new Error('缺少 vendor_sn/vendor_key，无法激活终端');
+  }
+
+  console.log('[收钱吧] 正在自动激活终端...');
+  const activateBody = {
+    vendor_sn: SKB_CONFIG.vendorSn,
+    app_id:     '20282623G00D018178',
+    device_id:  'QGYS_WEB_' + Date.now(),
+    // 某些版本需要这些字段
+    device_type: 'WEB',
+    os_info:     'Node.js',
+  };
+  const bodyStr = JSON.stringify(activateBody);
+  const sign    = skpSign(bodyStr, SKB_CONFIG.vendorKey);
+
+  const apiRes = await fetch(`${SKB_CONFIG.apiDomain}/terminal/activate`, {
+    method:  'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `${SKB_CONFIG.vendorSn} ${sign}`,
+    },
+    body: bodyStr,
+  });
+  const result = await apiRes.json();
+  console.log('[收钱吧] 激活响应:', JSON.stringify(result));
+
+  if (result.result === 'OK' || result.code === '0' || result.terminal_sn) {
+    const tSn  = result.terminal_sn || result.sn || result.data?.terminal_sn;
+    const tKey = result.terminal_key || result.key || result.data?.terminal_key;
+    if (tSn && tKey) {
+      _cachedTerminal = {
+        sn: tSn,
+        key: tKey,
+        expireAt: Date.now() + TERMINAL_CACHE_HRS * 3600 * 1000,
+      };
+      console.log(`[收钱吧] ✅ 终端激活成功: ${tSn}`);
+      return { sn: tSn, key: tKey };
+    }
+  }
+
+  // 激活失败，抛出详细错误
+  const errMsg = result.error_msg || result.message || result.msg || JSON.stringify(result);
+  throw new Error(`终端激活失败(${errMsg})`);
 }
 
 // ============================================================
@@ -546,15 +613,17 @@ app.post('/api/shoukuanba/precreate', async (req, res) => {
     if (amount <= 0) {
       return res.status(400).json({ success: false, error: '金额必须大于0' });
     }
-    // 确定使用的 sn 和 key（优先终端，未配置则降级用开发者）
-    const useSn  = SKB_CONFIG.terminalSn  || SKB_CONFIG.vendorSn;
-    const useKey = SKB_CONFIG.terminalKey || SKB_CONFIG.vendorKey;
-
-    if (!useSn || !useKey) {
+    // —— 获取终端凭证（自动激活或用配置值） ——
+    let useSn, useKey;
+    try {
+      const cred = await getTerminalCredentials();
+      useSn  = cred.sn;
+      useKey = cred.key;
+    } catch (e) {
       return res.status(500).json({
         success: false,
-        error: '收钱吧配置未填写（需配置终端或开发者凭证）',
-        needConfig: true,
+        error: `获取收钱吧终端凭证失败: ${e.message}`,
+        needTerminal: true,   // 前端可据此提示
       });
     }
 
@@ -631,12 +700,14 @@ app.post('/api/shoukuanba/query', async (req, res) => {
     const { clientSn } = req.body;
     if (!clientSn) return res.status(400).json({ success: false, error: '缺少 clientSn' });
 
-    // 确定使用的 sn 和 key（优先终端，未配置则降级用开发者）
-    const useSn  = SKB_CONFIG.terminalSn  || SKB_CONFIG.vendorSn;
-    const useKey = SKB_CONFIG.terminalKey || SKB_CONFIG.vendorKey;
-
-    if (!useSn || !useKey) {
-      return res.status(500).json({ success: false, error: '收钱吧配置未填写' });
+    // 获取终端凭证（自动激活或用配置值）
+    let useSn, useKey;
+    try {
+      const cred = await getTerminalCredentials();
+      useSn  = cred.sn;
+      useKey = cred.key;
+    } catch (e) {
+      return res.status(500).json({ success: false, error: `获取终端凭证失败: ${e.message}` });
     }
 
     const body    = { terminal_sn: useSn, client_sn: String(clientSn) };
