@@ -705,8 +705,9 @@ app.get('/api/analytics', async (req, res) => {
     // 获取全部记录（用分页函数）
     const records = await fetchAllRecords(baseUrl, token);
 
-    // 今日数据统计
-    const todayStats = {};
+    // 今日独立访客数（基于 page_view 事件去重）
+    const todayVisitorIds = new Set();
+    // 全量用户（所有时间，用于复购等跨天统计）
     const allUserIds = new Set();
     const submitOrderUsers = {}; // user_id -> 下单次数
 
@@ -715,13 +716,17 @@ app.get('/api/analytics', async (req, res) => {
       const uid = f[ANALYTICS_FIELDS.userId];
       const etype = f[ANALYTICS_FIELDS.eventType];
       const ts = f[ANALYTICS_FIELDS.timestamp] || '';
-      
+
       allUserIds.add(uid);
 
       // 是否是今天
       const isToday = ts.startsWith(today);
 
       if (isToday) {
+        // 统计今日访客（有 page_view 事件的独立用户）
+        if (etype === 'page_view') {
+          todayVisitorIds.add(uid);
+        }
         if (!todayStats[etype]) todayStats[etype] = { users: new Set(), events: 0 };
         todayStats[etype].users.add(uid);
         todayStats[etype].events++;
@@ -754,7 +759,8 @@ app.get('/api/analytics', async (req, res) => {
 
     res.json({
       date: today,
-      totalUsers: allUserIds.size,
+      totalUsers: todayVisitorIds.size,    // 今日独立访客（基于page_view去重）
+      allTimeUsers: allUserIds.size,       // 全量累积用户（供参考）
       repeatUsers: repeatCount,
       events,
       conversionRate: events.page_view && events.submit_order
@@ -855,13 +861,14 @@ app.get('/api/analytics/detail', async (req, res) => {
   }
 });
 
+// 同步统计数据到飞书（兼容前端按钮，数据已实时写入无需额外操作）
+app.post('/api/analytics/sync-to-feishu', async (req, res) => {
+  res.json({ success: true, message: '数据已实时同步到飞书' });
+});
+
 // ============================================================
 // 启动服务
 // ============================================================
-
-// (已移除) 数据现在直接写入飞书，无需同步
-
-
 
 app.listen(PORT, () => {
   console.log(`✅ 企港渔叔后端服务已启动：http://localhost:${PORT}`);
