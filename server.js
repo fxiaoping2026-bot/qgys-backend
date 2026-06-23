@@ -717,10 +717,9 @@ app.get('/api/shoukuanba/wap-pay-url', async (req, res) => {
 });
 
 // ============================================================
-// 收钱吧：支付跳转页（返回自动POST提交的HTML表单）
-// 解决问题：收钱吧 /upay/v2/pay 只接受 POST，浏览器 window.location.href 是 GET
-// 用法：前端 window.location.href = /api/shoukuanba/pay-redirect?...
-// 返回：HTML页面 → 自动POST到收钱吧 → 用户看到收钱吧付款页
+// 收钱吧：支付跳转页（后端调用API，拿到pay_url后302重定向）
+// 解决问题：表单直接POST到收钱吧返回JSON，浏览器显示白屏
+// 新方案：后端fetch调用收钱吧API → 解析JSON拿到pay_url → 302重定向
 // ============================================================
 app.get('/api/shoukuanba/pay-redirect', async (req, res) => {
   try {
@@ -744,28 +743,65 @@ app.get('/api/shoukuanba/pay-redirect', async (req, res) => {
     const sign = signWapParams(payParams, cred.key);
     payParams.sign = sign;
 
-    // 构建隐藏表单的 hidden input 字段
-    const hiddenFields = Object.entries(payParams)
-      .map(([key, val]) => `<input type="hidden" name="${key}" value="${String(val).replace(/"/g, '&quot;')}">`)
-      .join('\n        ');
+    // 后端直接调用收钱吧API（server-side fetch）
+    const apiUrl = `${SKB_CONFIG.apiDomain}/upay/v2/pay`;
+    const formData = Object.entries(payParams)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join('&');
 
-    const html = `<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"><title>正在跳转收钱吧...</title></head>
-<body style="margin:0;padding:20px;font-family:sans-serif;text-align:center;background:#f5f5f5">
-  <p style="color:#666;font-size:16px">⏳ 正在跳转到收钱吧付款页面...</p>
-  <form id="payForm" method="post" action="${SKB_CONFIG.apiDomain}/upay/v2/pay">
-        ${hiddenFields}
-  </form>
-  <script>document.getElementById('payForm').submit();</script>
-</body>
-</html>`;
+    console.log(`[PAY-REDIRECT] 调用收钱吧API: clientSn=${req.query.clientSn}, amount=${totalAmountFen}分`);
 
-    console.log(`[REDIRECT] 收钱吧支付跳转: clientSn=${req.query.clientSn}, amount=${totalAmountFen}分`);
-    res.set('Content-Type', 'text/html; charset=utf-8');
-    res.send(html);
+    const apiRes = await fetch(apiUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formData
+    });
+
+    const responseText = await apiRes.text();
+    console.log(`[PAY-REDIRECT] 收钱吧API响应: ${responseText.substring(0, 500)}`);
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (e) {
+      console.error('[PAY-REDIRECT] API返回非JSON:', responseText.substring(0, 200));
+      return res.status(500).send(`支付API返回格式异常，请稍后重试。<br><small>${responseText.substring(0, 200)}</small>`);
+    }
+
+    // 收钱吧成功响应：result_code === '200' 或 '000000'（不同接口可能不同）
+    // 成功时会返回 pay_url 或类似字段，需要重定向到该URL
+    if (data.result_code === '200' || data.result_code === '000000' || data.code === 200) {
+      // 尝试获取支付跳转URL（字段名可能是 pay_url / data.pay_url / url 等）
+      const payUrl = data.pay_url || (data.data && data.data.pay_url) || data.url || (data.data && data.data.url);
+      if (payUrl) {
+        console.log(`[PAY-REDIRECT] 获取到支付URL，重定向: ${payUrl}`);
+        return res.redirect(302, payUrl);
+      } else {
+        // 没有pay_url，可能是直接返回HTML（某些收钱吧接口直接返回支付页面）
+        // 直接把API响应返回给浏览器
+        console.log('[PAY-REDIRECT] 无pay_url字段，直接返回API响应');
+        res.set('Content-Type', 'text/html; charset=utf-8');
+        return res.send(responseText);
+      }
+    } else {
+      // 请求失败
+      const errorMsg = data.error_message || data.message || data.msg || '未知错误';
+      console.error(`[PAY-REDIRECT] 收钱吧API错误:`, data);
+      return res.status(500).send(`
+        <!DOCTYPE html>
+        <html>
+        <head><meta charset="utf-8"><title>支付失败</title></head>
+        <body style="font-family:sans-serif;text-align:center;padding:40px;background:#fff;">
+          <h2 style="color:#e53935;">⚠️ 支付请求失败</h2>
+          <p style="color:#666;">错误代码: ${data.result_code || data.code || '未知'}</p>
+          <p style="color:#666;">${errorMsg}</p>
+          <button onclick="window.history.back()" style="padding:12px 24px;background:#f5a623;color:#fff;border:none;border-radius:8px;font-size:16px;cursor:pointer;">返回重新下单</button>
+        </body>
+        </html>
+      `);
+    }
   } catch (err) {
-    console.error('[REDIRECT] 支付跳转失败:', err.message);
+    console.error('[PAY-REDIRECT] 支付跳转失败:', err.message);
     res.status(500).send(`支付跳转失败: ${err.message}`);
   }
 });
