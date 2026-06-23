@@ -7,7 +7,7 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
-<title>企港渔叔社区海鲜厨房 - 扫码点餐 v5.1</title>
+<title>企港渔叔社区海鲜厨房 - 扫码点餐 v5.2</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   :root {
@@ -1145,7 +1145,7 @@ switchPage = function(page) {
     <div class="stats-grid">
       <div class="stat-card">
         <div class="stat-num" id="statPending">0</div>
-        <div class="stat-label">待确认收款</div>
+        <div class="stat-label">已接单</div>
       </div>
       <div class="stat-card">
         <div class="stat-num" id="statMakingOrders">0</div>
@@ -1401,11 +1401,12 @@ switchPage = function(page) {
         <div style="font-size:40px;margin-bottom:12px;">💰</div>
         <div style="font-size:17px;font-weight:700;color:#333;margin-bottom:6px;">订单已创建</div>
         <div style="font-size:14px;color:#666;margin-bottom:16px;">点击下方按钮跳转到收钱吧付款</div>
-        <button onclick="doRedirectToPay()" style="
+        <a id="payRedirectLink" href="javascript:void(0)" onclick="doRedirectToPay()" style="
+          display:block;text-align:center;text-decoration:none;
           width:100%;border-radius:12px;padding:16px;font-size:18px;font-weight:700;
           background:linear-gradient(135deg,#f5a623,#e8930c);color:#fff;border:none;cursor:pointer;
           box-shadow:0 4px 12px rgba(245,166,35,0.3);
-        ">🔗 去收钱吧付款</button>
+        ">🔗 去收钱吧付款</a>
       </div>
 
       <!-- 状态2：正在生成链接 -->
@@ -1466,9 +1467,9 @@ switchPage = function(page) {
     <button class="btn-pay-done" id="btnPayDone" onclick="confirmPayment()" disabled style="
       opacity:0.5;cursor:not-allowed;margin-top:14px;width:100%;border-radius:12px;padding:14px;font-size:16px;font-weight:700;
       background: linear-gradient(135deg, var(--primary), #06ad56);
-    ">✅ 我已完成付款，等待商家确认</button>
+    ">✅ 我已完成付款</button>
 
-    <div style="margin-top:10px;font-size:11px;color:#aaa;">商家确认收款后才会开始制作</div>
+    <div style="margin-top:10px;font-size:11px;color:#4caf50;">✅ 订单已接单，商家正在准备制作</div>
   </div>
 
   <button style="background:none;border:1px solid #ddd;color:#999;font-size:13px;margin-top:14px;padding:8px 24px;border-radius:20px;cursor:pointer;" onclick="cancelPay()">取消订单</button>
@@ -1529,8 +1530,8 @@ switchPage = function(page) {
 <!-- ===== 成功页 ===== -->
 <div class="success-page" id="successPage">
   <div class="success-icon">✅</div>
-  <h2>订单已提交！</h2>
-  <p>商家正在确认收款，确认后会尽快制作</p>
+  <h2>✅ 付款已确认</h2>
+  <p>订单已接单，商家正在准备制作中…</p>
   <p style="font-size:13px;color:var(--primary);margin-top:8px;">⏰ 下班不用做饭 · 15分钟带走</p>
   <div class="order-no">订单编号：<span id="successOrderNo"></span></div>
   <p style="font-size:12px;color:#aaa;">到店出示此订单号即可取餐</p>
@@ -1609,7 +1610,7 @@ switchPage = function(page) {
 <div class="toast" id="toast"></div>
 
 <script>
-// ===== 【v5.1】支付核心函数 —— POST表单跳转，解决Method Not Allowed =====
+// ===== 【v5.2】支付核心函数 —— POST表单跳转，解决Method Not Allowed =====
 let _currentPayOrder = { total: 0, orderNo: '', clientSn: '', payUrl: '' };
 
 async function generateDynamicQr(totalAmount, clientSn) {
@@ -1617,8 +1618,8 @@ async function generateDynamicQr(totalAmount, clientSn) {
   showPayState('loading');
 
   const verEl = document.getElementById('payDebugInfo');
-  if (verEl) verEl.textContent = 'v5.1-active | ' + new Date().toLocaleTimeString();
-  console.log('[PAY v5.1] 开始支付跳转...', { totalAmount, clientSn, API_BASE });
+  if (verEl) verEl.textContent = 'v5.2-active | ' + new Date().toLocaleTimeString();
+  console.log('[PAY v5.2] 开始支付跳转...', { totalAmount, clientSn, API_BASE });
 
   // 构造 return_url（付款后自动跳回订单状态页）
   const returnUrl = window.location.origin + '?orderNo=' + encodeURIComponent(clientSn) + '&total=' + encodeURIComponent(totalAmount) + '&show=status';
@@ -1630,12 +1631,18 @@ async function generateDynamicQr(totalAmount, clientSn) {
     + '&returnUrl=' + encodeURIComponent(returnUrl)
     + '&t=' + Date.now();
 
-  console.log('[PAY v5] 跳转支付:', redirectUrl);
+  console.log('[PAY v5.2] 跳转支付:', redirectUrl);
 
   // 直接跳转到支付中间页（后端返回自动POST提交到收钱吧的HTML表单）
   _currentPayOrder.payUrl = redirectUrl;
   showPayState('ready', redirectUrl);
-  setTimeout(() => { window.location.href = redirectUrl; }, 500);
+  // 自动跳转：延迟1.5秒给用户看到"准备就绪"状态
+  setTimeout(function() {
+    console.log('[PAY v5.2] 自动跳转执行:', redirectUrl);
+    var link = document.getElementById('payRedirectLink');
+    if (link) link.href = redirectUrl;
+    window.open(redirectUrl, '_self');
+  }, 1500);
 }
 
 // ===== 订单状态页相关函数 =====
@@ -1855,7 +1862,12 @@ function showPayState(state, extra) {
   switch(state) {
     case 'loading': if (loading) loading.style.display = ''; break;
     case 'ready':
-      if (extra && ready) { _currentPayOrder.payUrl = extra; var b=ready.querySelector('button'); if(b) b.textContent='✅ 去收钱吧付款'; }
+      if (extra && ready) {
+        _currentPayOrder.payUrl = extra;
+        // 同时设置 a 标签的 href，确保点击即可跳转
+        var link = document.getElementById('payRedirectLink');
+        if (link) link.href = extra;
+      }
       if (ready) ready.style.display='';
       if (icons) icons.style.display='';
       if (tips) { tips.innerHTML='<span style="color:#f5a623;font-weight:600;">💡 如未自动跳转请点按钮</span>'; tips.style.display=''; }
@@ -1867,7 +1879,7 @@ function showPayState(state, extra) {
   }
 }
 
-console.log('[v4] ✅ generateDynamicQr 已加载');
+console.log('[v5.2] ✅ generateDynamicQr 已加载');
 
 // ===== 菜单数据（企港渔叔社区海鲜厨房·完整菜单）=====
 let menuData = [
@@ -2405,16 +2417,16 @@ function confirmPayment() {
   document.getElementById('successOrderNo').textContent = orderNo;
   document.getElementById('successPage').classList.add('show');
 
-  // 修改成功页文案（待确认状态）
+  // 修改成功页文案
   const successH2 = document.querySelector('#successPage h2');
   const successP = document.querySelector('#successPage p');
-  if (successH2) successH2.textContent = '📋 订单已提交';
-  if (successP) successP.textContent = '商家正在确认收款，确认后会尽快制作';
+  if (successH2) successH2.textContent = '✅ 付款已确认';
+  if (successP) successP.textContent = '订单已接单，商家正在准备制作中…';
 
   cart = {};
   updateCartUI();
   renderMenu();
-  showToast('✅ 订单已提交，请等待商家确认');
+  showToast('✅ 订单已提交，请前往付款');
 }
 
 // 保存订单到本地存储
@@ -2617,7 +2629,7 @@ function _onUserReturnedFromPay() {
     <div class="modal-sheet" style="position:relative;text-align:center;">
       <div style="font-size:40px;margin-bottom:12px;">💳</div>
       <h3 style="font-size:18px;font-weight:700;margin-bottom:8px;">检测到您已操作付款</h3>
-      <p style="font-size:14px;color:#666;margin-bottom:20px;">请勾选"我已完成付款"，再点击"我已完成付款，等待商家确认"</p>
+      <p style="font-size:14px;color:#666;margin-bottom:20px;">付款完成后，请勾选"我已完成付款"并确认</p>
       <button class="btn-submit-order" style="background:linear-gradient(135deg,#07c160,#06ad56);"
         onclick="closeReturnPrompt()">知道了</button>
     </div>
@@ -2752,10 +2764,12 @@ async function doLookupOrder() {
 
   // 状态映射
   const statusMap = {
+    'accepted':  { text: '✅ 已接单',     color: '#155724', bg: '#d4edda' },
+    'cooking':   { text: '🔥 制作中',    color: '#856404', bg: '#fff3cd' },
+    'done':      { text: '✔ 已完成',      color: '#155724', bg: '#d4edda' },
     'pending':   { text: '待确认收款', color: '#a0522d', bg: '#ffe5b4' },
     'confirmed': { text: '已确认收款',   color: '#004085', bg: '#e7f3ff' },
     'making':    { text: '制作中',       color: '#004085', bg: '#cce5ff' },
-    'done':      { text: '已完成',       color: '#155724', bg: '#d4edda' },
     'cancelled': { text: '已取消',       color: '#721c24', bg: '#f8d7da' },
     'rejected':  { text: '已拒绝',       color: '#721c24', bg: '#f8d7da' },
     'retry':     { text: '⚠️ 等待重新付款', color: '#c62828', bg: '#ffebee' },
@@ -4377,14 +4391,22 @@ let _payPollTimer = null;
 /** 用户点击"去收钱吧付款"按钮 */
 function doRedirectToPay() {
   if (!_currentPayOrder.payUrl) {
-    showToast('付款链接未准备好'); return;
+    showToast('⏳ 正在准备付款链接...'); return;
   }
+  console.log('[PAY] 用户点击付款，跳转:', _currentPayOrder.payUrl);
   // 记录跳转时间（用于检测用户是否已返回）
   localStorage.setItem('qgys_pay_redirect_time', Date.now());
   localStorage.setItem('qgys_pay_redirect_order', _currentPayOrder.orderNo);
 
-  // 跳转到收钱吧付款页面
-  window.location.href = _currentPayOrder.payUrl;
+  // 方式1：直接修改链接并点击（兼容微信浏览器）
+  var link = document.getElementById('payRedirectLink');
+  if (link) {
+    link.href = _currentPayOrder.payUrl;
+    // 用新窗口打开（微信浏览器可能拦截 location.href，但不会拦截用户主动点击的 a 标签）
+    link.setAttribute('target', '_self');
+  }
+  // 方式2：同时尝试直接跳转
+  window.open(_currentPayOrder.payUrl, '_self');
 }
 
 /** 重试生成付款链接 */
