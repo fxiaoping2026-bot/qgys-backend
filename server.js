@@ -716,6 +716,60 @@ app.get('/api/shoukuanba/wap-pay-url', async (req, res) => {
   }
 });
 
+// ============================================================
+// 收钱吧：支付跳转页（返回自动POST提交的HTML表单）
+// 解决问题：收钱吧 /upay/v2/pay 只接受 POST，浏览器 window.location.href 是 GET
+// 用法：前端 window.location.href = /api/shoukuanba/pay-redirect?...
+// 返回：HTML页面 → 自动POST到收钱吧 → 用户看到收钱吧付款页
+// ============================================================
+app.get('/api/shoukuanba/pay-redirect', async (req, res) => {
+  try {
+    const amount = Number(req.query.totalAmount || req.query.totalAmountYuan);
+    if (!amount || !req.query.clientSn) {
+      return res.status(400).send('缺少金额或订单号');
+    }
+
+    const cred = getTerminalCredentialsSync();
+    const totalAmountFen = String(Math.round(amount * 100));
+
+    const payParams = {
+      terminal_sn: cred.sn,
+      client_sn:    String(req.query.clientSn),
+      total_amount: totalAmountFen,
+      subject:      req.query.subject  || '企港渔叔-海鲜点餐',
+      operator:     req.query.operator || '企港渔叔',
+      return_url:   req.query.returnUrl || '',
+    };
+
+    const sign = signWapParams(payParams, cred.key);
+    payParams.sign = sign;
+
+    // 构建隐藏表单的 hidden input 字段
+    const hiddenFields = Object.entries(payParams)
+      .map(([key, val]) => `<input type="hidden" name="${key}" value="${String(val).replace(/"/g, '&quot;')}">`)
+      .join('\n        ');
+
+    const html = `<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"><title>正在跳转收钱吧...</title></head>
+<body style="margin:0;padding:20px;font-family:sans-serif;text-align:center;background:#f5f5f5">
+  <p style="color:#666;font-size:16px">⏳ 正在跳转到收钱吧付款页面...</p>
+  <form id="payForm" method="post" action="${SKB_CONFIG.apiDomain}/upay/v2/pay">
+        ${hiddenFields}
+  </form>
+  <script>document.getElementById('payForm').submit();</script>
+</body>
+</html>`;
+
+    console.log(`[REDIRECT] 收钱吧支付跳转: clientSn=${req.query.clientSn}, amount=${totalAmountFen}分`);
+    res.set('Content-Type', 'text/html; charset=utf-8');
+    res.send(html);
+  } catch (err) {
+    console.error('[REDIRECT] 支付跳转失败:', err.message);
+    res.status(500).send(`支付跳转失败: ${err.message}`);
+  }
+});
+
 // ====== POST /api/shoukuanba/query
 app.post('/api/shoukuanba/query', async (req, res) => {
   try {
@@ -782,7 +836,7 @@ app.post('/api/track', async (req, res) => {
     fields[ANALYTICS_FIELDS.phone] = (phone || '').trim();
     fields[ANALYTICS_FIELDS.eventType] = eventType;
     fields[ANALYTICS_FIELDS.eventData] = JSON.stringify(eventData || {});
-    fields[ANALYTICS_FIELDS.timestamp] = new Date().toISOString();
+    fields[ANALYTICS_FIELDS.timestamp] = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Shanghai' }).replace(' ', ' ');
 
     const resp = await fetch(`${baseUrl}/records`, {
       method: 'POST',

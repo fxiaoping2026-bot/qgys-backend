@@ -1623,60 +1623,19 @@ async function generateDynamicQr(totalAmount, clientSn) {
   // 构造 return_url（付款后自动跳回订单状态页）
   const returnUrl = window.location.origin + '?orderNo=' + encodeURIComponent(clientSn) + '&total=' + encodeURIComponent(totalAmount) + '&show=status';
 
-  try {
-    // 方案1：GET请求（避免CORS预检）
-    const getUrl = API_BASE + '/api/shoukuanba/wap-pay-url'
-      + '?totalAmount=' + encodeURIComponent(totalAmount)
-      + '&clientSn=' + encodeURIComponent(clientSn)
-      + '&returnUrl=' + encodeURIComponent(returnUrl)
-      + '&t=' + Date.now();
+  // 构造支付跳转URL（后端返回自动POST提交的HTML表单页）
+  const redirectUrl = API_BASE + '/api/shoukuanba/pay-redirect'
+    + '?totalAmount=' + encodeURIComponent(totalAmount)
+    + '&clientSn=' + encodeURIComponent(clientSn)
+    + '&returnUrl=' + encodeURIComponent(returnUrl)
+    + '&t=' + Date.now();
 
-    console.log('[PAY v4] GET:', getUrl);
+  console.log('[PAY v5] 跳转支付:', redirectUrl);
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
-
-    const res = await fetch(getUrl, {
-      method: 'GET',
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-
-    console.log('[PAY v4] HTTP:', res.status);
-    const data = await res.json();
-    console.log('[PAY v4] 响应:', JSON.stringify(data));
-
-    if (data.success && data.payUrl) {
-      _currentPayOrder.payUrl = data.payUrl;
-      showPayState('ready', data.payUrl);
-      setTimeout(() => { window.location.href = data.payUrl; }, 500);
-      return;
-    }
-    throw new Error(data.error || JSON.stringify(data));
-  } catch (err) {
-    console.error('[PAY v4] 失败:', err.message);
-    try {
-      // 方案2：POST兜底
-      const c2 = new AbortController();
-      const t2 = setTimeout(() => c2.abort(), 10000);
-      const r2 = await fetch(API_BASE + '/api/shoukuanba/wap-pay-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ totalAmount, clientSn }),
-        signal: c2.signal,
-      });
-      clearTimeout(t2);
-      const d2 = await r2.json();
-      if (d2.success && d2.payUrl) {
-        _currentPayOrder.payUrl = d2.payUrl;
-        showPayState('ready', d2.payUrl);
-        setTimeout(() => { window.location.href = d2.payUrl; }, 500);
-        return;
-      }
-      throw new Error(d2.error || 'POST也失败');
-    } catch (e2) {
-      console.error('[PAY v4] 全部失败:', e2.message);
-      showPayState('error', e2.name === 'AbortError' ? '⏰ 网络超时，请重试' : e2.message);
+  // 直接跳转到支付中间页（后端返回自动POST提交到收钱吧的HTML表单）
+  _currentPayOrder.payUrl = redirectUrl;
+  showPayState('ready', redirectUrl);
+  setTimeout(() => { window.location.href = redirectUrl; }, 500);
     }
   }
 }
