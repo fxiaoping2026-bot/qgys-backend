@@ -1636,8 +1636,6 @@ async function generateDynamicQr(totalAmount, clientSn) {
   _currentPayOrder.payUrl = redirectUrl;
   showPayState('ready', redirectUrl);
   setTimeout(() => { window.location.href = redirectUrl; }, 500);
-    }
-  }
 }
 
 // ===== 订单状态页相关函数 =====
