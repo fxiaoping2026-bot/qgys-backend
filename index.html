@@ -3,7 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>企港渔叔社区海鲜厨房 - 扫码点餐</title>
+<!-- 防缓存：强制每次加载最新版本 -->
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>企港渔叔社区海鲜厨房 - 扫码点餐 v4</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   :root {
@@ -1512,6 +1516,102 @@ switchPage = function(page) {
 <div class="toast" id="toast"></div>
 
 <script>
+// ===== 【v4】支付核心函数 —— 放在最前面确保全局可用 =====
+let _currentPayOrder = { total: 0, orderNo: '', clientSn: '', payUrl: '' };
+
+async function generateDynamicQr(totalAmount, clientSn) {
+  _currentPayOrder = { total: totalAmount, orderNo: clientSn, clientSn: clientSn };
+  showPayState('loading');
+
+  const verEl = document.getElementById('payDebugInfo');
+  if (verEl) verEl.textContent = 'v4-active | ' + new Date().toLocaleTimeString();
+  console.log('[PAY v4] 开始生成付款链接...', { totalAmount, clientSn, API_BASE });
+
+  try {
+    // 方案1：GET请求（避免CORS预检）
+    const getUrl = API_BASE + '/api/shoukuanba/wap-pay-url'
+      + '?totalAmount=' + encodeURIComponent(totalAmount)
+      + '&clientSn=' + encodeURIComponent(clientSn)
+      + '&t=' + Date.now();
+
+    console.log('[PAY v4] GET:', getUrl);
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+
+    const res = await fetch(getUrl, {
+      method: 'GET',
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    console.log('[PAY v4] HTTP:', res.status);
+    const data = await res.json();
+    console.log('[PAY v4] 响应:', JSON.stringify(data));
+
+    if (data.success && data.payUrl) {
+      _currentPayOrder.payUrl = data.payUrl;
+      showPayState('ready', data.payUrl);
+      setTimeout(() => { window.location.href = data.payUrl; }, 500);
+      return;
+    }
+    throw new Error(data.error || JSON.stringify(data));
+  } catch (err) {
+    console.error('[PAY v4] 失败:', err.message);
+    try {
+      // 方案2：POST兜底
+      const c2 = new AbortController();
+      const t2 = setTimeout(() => c2.abort(), 10000);
+      const r2 = await fetch(API_BASE + '/api/shoukuanba/wap-pay-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ totalAmount, clientSn }),
+        signal: c2.signal,
+      });
+      clearTimeout(t2);
+      const d2 = await r2.json();
+      if (d2.success && d2.payUrl) {
+        _currentPayOrder.payUrl = d2.payUrl;
+        showPayState('ready', d2.payUrl);
+        setTimeout(() => { window.location.href = d2.payUrl; }, 500);
+        return;
+      }
+      throw new Error(d2.error || 'POST也失败');
+    } catch (e2) {
+      console.error('[PAY v4] 全部失败:', e2.message);
+      showPayState('error', e2.name === 'AbortError' ? '⏰ 网络超时，请重试' : e2.message);
+    }
+  }
+}
+
+function showPayState(state, extra) {
+  var ready   = document.getElementById('redirectReady');
+  var loading = document.getElementById('redirectLoading');
+  var error   = document.getElementById('redirectError');
+  var icons   = document.getElementById('payMethodIcons');
+  var tips    = document.getElementById('payStepTips');
+  if (ready) ready.style.display = 'none';
+  if (loading) loading.style.display = 'none';
+  if (error) error.style.display = 'none';
+  if (icons) icons.style.display = 'none';
+  if (tips) tips.style.display = 'none';
+  switch(state) {
+    case 'loading': if (loading) loading.style.display = ''; break;
+    case 'ready':
+      if (extra && ready) { _currentPayOrder.payUrl = extra; var b=ready.querySelector('button'); if(b) b.textContent='✅ 去收钱吧付款'; }
+      if (ready) ready.style.display='';
+      if (icons) icons.style.display='';
+      if (tips) { tips.innerHTML='<span style="color:#f5a623;font-weight:600;">💡 如未自动跳转请点按钮</span>'; tips.style.display=''; }
+      break;
+    case 'error':
+      if (error) { error.style.display=''; var m=document.getElementById('redirectErrorMsg'); if(m&&extra) m.textContent='⚠️ '+extra; }
+      if (icons) icons.style.display='';
+      break;
+  }
+}
+
+console.log('[v4] ✅ generateDynamicQr 已加载');
+
 // ===== 菜单数据（企港渔叔社区海鲜厨房·完整菜单）=====
 let menuData = [
   {
@@ -3975,146 +4075,8 @@ switchPage = function(page) {
   </div>
 
 
-// === 动态收款码相关函数（收钱吧预下单）===
-
 // 轮询定时器
 let _payPollTimer = null;
-
-// 调用收钱吧预下单接口，生成动态收款二维码
-// ====== 跳转支付（替代扫码支付）======
-
-// 当前订单信息（跨函数共享）
-let _currentPayOrder = { total: 0, orderNo: '', clientSn: '' };
-
-/**
- * 调用收钱吧预下单 → 获取付款链接 → 自动/手动跳转
- * @param {number} totalAmount - 订单金额（元）
- * @param {string} clientSn   - 订单号
- */
-async function generateDynamicQr(totalAmount, clientSn) {
-  // 保存当前订单信息
-  _currentPayOrder = { total: totalAmount, orderNo: clientSn, clientSn: clientSn };
-
-  // 显示"正在生成链接"
-  showPayState('loading');
-
-  // ===== 调试：在页面显示版本信息 =====
-  const verEl = document.getElementById('payDebugInfo');
-  if (verEl) verEl.textContent = 'v20260623-2048 | ' + new Date().toLocaleTimeString();
-  console.log('[PAY v2] 开始生成付款链接...', { totalAmount, clientSn, API_BASE });
-
-  // ===== 方案1：GET请求获取支付URL（避免CORS预检问题）=====
-  try {
-    const getUrl = API_BASE + '/api/shoukuanba/wap-pay-url'
-      + '?totalAmount=' + encodeURIComponent(totalAmount)
-      + '&clientSn=' + encodeURIComponent(clientSn)
-      + '&t=' + Date.now();  // 防缓存
-
-    console.log('[PAY v2] GET请求:', getUrl);
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
-
-    const res = await fetch(getUrl, {
-      method: 'GET',
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-
-    console.log('[PAY v2] HTTP状态:', res.status);
-    const data = await res.json();
-    console.log('[PAY v2] 响应:', JSON.stringify(data));
-
-    if (data.success && data.payUrl) {
-      _currentPayOrder.payUrl = data.payUrl;
-      // 先显示"去付款"按钮，再尝试自动跳转（双重保障）
-      showPayState('ready', data.payUrl);
-      // 延迟500ms后跳转（让用户看到按钮先）
-      setTimeout(() => { window.location.href = data.payUrl; }, 500);
-      return;
-    }
-
-    throw new Error(data.error || JSON.stringify(data));
-
-  } catch (err) {
-    console.error('[PAY v2] 失败:', err.message);
-
-    // ===== 方案2：POST兜底 =====
-    try {
-      console.log('[PAY v2] 尝试POST方式...');
-      const controller2 = new AbortController();
-      const timer2 = setTimeout(() => controller2.abort(), 10000);
-
-      const res2 = await fetch(API_BASE + '/api/shoukuanba/wap-pay-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ totalAmount, clientSn }),
-        signal: controller2.signal,
-      });
-      clearTimeout(timer2);
-
-      const data2 = await res2.json();
-      console.log('[PAY v2] POST响应:', JSON.stringify(data2));
-
-      if (data2.success && data2.payUrl) {
-        _currentPayOrder.payUrl = data2.payUrl;
-        showPayState('ready', data2.payUrl);
-        setTimeout(() => { window.location.href = data2.payUrl; }, 500);
-        return;
-      }
-      throw new Error(data2.error || 'POST也失败');
-    } catch (err2) {
-      console.error('[PAY v2] 全部失败:', err2.message);
-      showPayState('error', err2.name === 'AbortError'
-        ? '⏰ 网络超时，请检查网络后刷新重试\n\n如持续失败请联系商家'
-        : '❌ ' + err2.message);
-    }
-  }
-}
-
-/** 显示支付页的不同状态 */
-function showPayState(state, extra) {
-  const ready   = document.getElementById('redirectReady');
-  const loading = document.getElementById('redirectLoading');
-  const error   = document.getElementById('redirectError');
-  const icons   = document.getElementById('payMethodIcons');
-  const tips    = document.getElementById('payStepTips');
-
-  if (ready)   ready.style.display   = 'none';
-  if (loading) loading.style.display = 'none';
-  if (error)   error.style.display   = 'none';
-  if (icons)   icons.style.display   = 'none';
-  if (tips)    tips.style.display    = 'none';
-
-  switch(state) {
-    case 'loading':
-      if (loading) { loading.style.display = ''; }
-      break;
-    case 'ready':
-      // extra = payUrl
-      if (extra) {
-        _currentPayOrder.payUrl = extra;
-        // 更新按钮文字，显示已就绪
-        const btn = ready ? ready.querySelector('button') : null;
-        if (btn) btn.textContent = '✅ 去收钱吧付款（点击跳转）';
-      }
-      if (ready) ready.style.display = '';
-      if (icons) icons.style.display = '';
-      if (tips) tips.innerHTML = '<span style="color:#f5a623;font-weight:600;">💡 如未自动跳转，请点击上方按钮</span>';
-      if (tips) tips.style.display = '';
-      // 解锁"已完成付款"勾选框
-      autoUnlockConfirm();
-      break;
-    case 'error':
-      if (error) {
-        error.style.display = '';
-        const msgEl = document.getElementById('redirectErrorMsg');
-        if (msgEl && extra) msgEl.textContent = '⚠️ ' + extra;
-      }
-      if (icons) icons.style.display = '';
-      break;
-  }
-}
 
 /** 用户点击"去收钱吧付款"按钮 */
 function doRedirectToPay() {
