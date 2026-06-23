@@ -629,6 +629,46 @@
   .admin-section-title .icon { width: 16px; height: 16px; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes modalSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ===== 订单状态页 ===== */
+  .order-status-page { display: none; padding: 20px 16px; max-width: 420px; margin: 0 auto; }
+  .order-status-page.show { display: block; }
+  .status-header { text-align: center; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0; margin-bottom: 20px; }
+  .status-label { font-size: 12px; color: #999; margin-bottom: 4px; }
+  .status-order-no { font-size: 15px; font-weight: 600; color: #333; }
+  .status-amount { font-size: 28px; font-weight: 800; color: var(--primary); margin-top: 10px; }
+  .status-progress { background: #fff; border-radius: 16px; padding: 24px 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 18px; }
+  .progress-title { font-size: 16px; font-weight: 700; color: #333; margin-bottom: 16px; text-align: center; }
+  .progress-step { display: flex; align-items: center; margin-bottom: 16px; }
+  .progress-step:last-child { margin-bottom: 0; }
+  .step-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-right: 12px; flex-shrink: 0; }
+  .step-icon.pending { background: #ccc; color: #fff; }
+  .step-icon.active { background: #f5a623; color: #fff; }
+  .step-icon.done { background: #07c160; color: #fff; }
+  .step-info { flex: 1; }
+  .step-name { font-size: 15px; font-weight: 600; color: #333; }
+  .step-name.done { color: #999; }
+  .step-time { font-size: 12px; color: #999; margin-top: 2px; }
+  .status-footer { text-align: center; padding: 0 16px; }
+  .status-tips { background: #fafafa; border-radius: 8px; padding: 10px 14px; text-align: left; font-size: 12px; color: #888; line-height: 1.9; margin-bottom: 16px; }
+  .btn-contact { padding: 10px 28px; font-size: 14px; font-weight: 600; background: var(--primary); color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+
+  /* ===== 商家管理页 ===== */
+  .admin-page { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f5f5f5; z-index: 1000; overflow-y: auto; padding: 16px; }
+  .admin-page.show { display: block; }
+  .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+  .admin-header h2 { font-size: 18px; font-weight: 700; color: #333; }
+  .admin-tips { font-size: 13px; color: #999; margin-bottom: 12px; }
+  .admin-order-list { display: flex; flex-direction: column; gap: 12px; }
+  .admin-order-item { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+  .admin-order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .admin-order-no { font-size: 14px; font-weight: 600; color: #333; }
+  .admin-order-amount { font-size: 16px; font-weight: 700; color: var(--primary); }
+  .admin-order-status { font-size: 12px; color: #999; margin-bottom: 8px; }
+  .admin-order-actions { display: flex; gap: 8px; }
+  .admin-btn-start { flex: 1; padding: 8px 16px; font-size: 14px; font-weight: 600; background: #f5a623; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+  .admin-btn-done { flex: 1; padding: 8px 16px; font-size: 14px; font-weight: 600; background: #07c160; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+  .admin-btn-disabled { flex: 1; padding: 8px 16px; font-size: 14px; font-weight: 600; background: #ccc; color: #fff; border: none; border-radius: 8px; cursor: not-allowed; }
 </style>
 
 <!-- SVG 图标库 -->
@@ -1433,6 +1473,58 @@ switchPage = function(page) {
   <button style="background:none;border:1px solid #ddd;color:#999;font-size:13px;margin-top:14px;padding:8px 24px;border-radius:20px;cursor:pointer;" onclick="cancelPay()">取消订单</button>
 </div>
 
+<!-- ===== 商家管理页 ===== -->
+<div class="admin-page" id="adminPage">
+  <div class="admin-header">
+    <h2>📋 订单管理</h2>
+    <button onclick="closeAdminPage()" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
+  </div>
+  <div class="admin-tips" id="adminTips">正在加载订单...</div>
+  <div class="admin-order-list" id="adminOrderList"></div>
+</div>
+
+<!-- ===== 订单状态页 ===== -->
+<div class="order-status-page" id="orderStatusPage">
+  <div class="status-header">
+    <div class="status-label">订单编号</div>
+    <div class="status-order-no" id="statusOrderNo"></div>
+    <div class="status-amount" id="statusAmount">¥0.00</div>
+  </div>
+
+  <div class="status-progress">
+    <div class="progress-title">订单状态</div>
+    
+    <div class="progress-step" id="stepAccepted">
+      <div class="step-icon" id="stepAcceptedIcon">✅</div>
+      <div class="step-info">
+        <div class="step-name">商家已接单</div>
+        <div class="step-time" id="stepAcceptedTime"></div>
+      </div>
+    </div>
+    
+    <div class="progress-step" id="stepCooking">
+      <div class="step-icon pending" id="stepCookingIcon">🍳</div>
+      <div class="step-info">
+        <div class="step-name">正在制作中...</div>
+        <div class="step-time" id="stepCookingTime"></div>
+      </div>
+    </div>
+    
+    <div class="progress-step" id="stepDone">
+      <div class="step-icon pending" id="stepDoneIcon">⏳</div>
+      <div class="step-info">
+        <div class="step-name" id="stepDoneText">制作完成</div>
+        <div class="step-time" id="stepDoneTime"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status-footer">
+    <div class="status-tips" id="statusTips">预计等待：15-20分钟</div>
+    <button class="btn-contact" onclick="contactShop()">联系商家</button>
+  </div>
+</div>
+
 <!-- ===== 成功页 ===== -->
 <div class="success-page" id="successPage">
   <div class="success-icon">✅</div>
@@ -1527,11 +1619,15 @@ async function generateDynamicQr(totalAmount, clientSn) {
   if (verEl) verEl.textContent = 'v4-active | ' + new Date().toLocaleTimeString();
   console.log('[PAY v4] 开始生成付款链接...', { totalAmount, clientSn, API_BASE });
 
+  // 构造 return_url（付款后自动跳回订单状态页）
+  const returnUrl = window.location.origin + '?orderNo=' + encodeURIComponent(clientSn) + '&total=' + encodeURIComponent(totalAmount) + '&show=status';
+
   try {
     // 方案1：GET请求（避免CORS预检）
     const getUrl = API_BASE + '/api/shoukuanba/wap-pay-url'
       + '?totalAmount=' + encodeURIComponent(totalAmount)
       + '&clientSn=' + encodeURIComponent(clientSn)
+      + '&returnUrl=' + encodeURIComponent(returnUrl)
       + '&t=' + Date.now();
 
     console.log('[PAY v4] GET:', getUrl);
@@ -1583,6 +1679,209 @@ async function generateDynamicQr(totalAmount, clientSn) {
     }
   }
 }
+
+// ===== 订单状态页相关函数 =====
+let _statusPollTimer = null;
+
+function showOrderStatusPage(orderNo, total) {
+  // 隐藏其他页面
+  document.querySelectorAll('.page, .pay-page, .success-page').forEach(p => p.classList.remove('show'));
+  const statusPage = document.getElementById('orderStatusPage');
+  if (statusPage) statusPage.classList.add('show');
+  
+  // 填充订单信息
+  const noEl = document.getElementById('statusOrderNo');
+  if (noEl) noEl.textContent = orderNo;
+  const amountEl = document.getElementById('statusAmount');
+  if (amountEl) amountEl.textContent = '¥' + (total || 0).toFixed(2);
+  
+  // 初始化状态UI（默认：已接单）
+  updateStatusUI('accepted');
+  
+  // 开始轮询订单状态
+  pollOrderStatus(orderNo);
+}
+
+async function pollOrderStatus(orderNo) {
+  // 清除旧定时器
+  if (_statusPollTimer) clearInterval(_statusPollTimer);
+  
+  // 立即查询一次
+  await fetchOrderStatus(orderNo);
+  
+  // 每5秒轮询一次
+  _statusPollTimer = setInterval(() => {
+    fetchOrderStatus(orderNo);
+  }, 5000);
+}
+
+async function fetchOrderStatus(orderNo) {
+  try {
+    const res = await fetch(API_BASE + '/api/orders/' + encodeURIComponent(orderNo) + '/status');
+    const data = await res.json();
+    if (data.success) {
+      updateStatusUI(data.status);
+    }
+  } catch (err) {
+    console.error('[订单状态] 轮询失败:', err.message);
+  }
+}
+
+function updateStatusUI(status) {
+  // 步骤1：商家已接单（accepted）
+  const stepAcceptedIcon = document.getElementById('stepAcceptedIcon');
+  const stepAcceptedTime = document.getElementById('stepAcceptedTime');
+  if (stepAcceptedIcon) {
+    stepAcceptedIcon.className = 'step-icon done';
+    stepAcceptedIcon.textContent = '✅';
+  }
+  if (stepAcceptedTime && !stepAcceptedTime.textContent) {
+    stepAcceptedTime.textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+  }
+  
+  // 步骤2：制作中（cooking）
+  const stepCookingIcon = document.getElementById('stepCookingIcon');
+  if (status === 'cooking' || status === 'done') {
+    if (stepCookingIcon) {
+      stepCookingIcon.className = 'step-icon ' + (status === 'done' ? 'done' : 'active');
+      stepCookingIcon.textContent = status === 'done' ? '✅' : '🍳';
+    }
+    const stepCookingTime = document.getElementById('stepCookingTime');
+    if (stepCookingTime && !stepCookingTime.textContent) {
+      stepCookingTime.textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    }
+  }
+    
+  // 步骤3：制作完成（done）
+  const stepDoneIcon = document.getElementById('stepDoneIcon');
+  const stepDoneTime = document.getElementById('stepDoneTime');
+  const stepDoneText = document.getElementById('stepDoneText');
+  if (status === 'done') {
+    if (stepDoneIcon) {
+      stepDoneIcon.className = 'step-icon done';
+      stepDoneIcon.textContent = '✅';
+    }
+    if (stepDoneText) {
+      stepDoneText.textContent = '制作完成，请到店取餐';
+      stepDoneText.className = 'step-name done';
+    }
+    if (stepDoneTime && !stepDoneTime.textContent) {
+      stepDoneTime.textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
+    }
+      
+    // 停止轮询
+    if (_statusPollTimer) {
+      clearInterval(_statusPollTimer);
+      _statusPollTimer = null;
+    }
+      
+    // 更新提示
+    const tipsEl = document.getElementById('statusTips');
+    if (tipsEl) tipsEl.textContent = '✅ 制作完成，请到店取餐！';
+  }
+}
+
+// ===== 商家管理页相关函数 =====
+let _adminVerified = false;
+
+function showAdminPage() {
+  if (_adminVerified) {
+    loadAdminOrders();
+    return;
+  }
+  const pwd = prompt('请输入管理密码：');
+  if (pwd === 'qgys2026') {
+    _adminVerified = true;
+    loadAdminOrders();
+  } else if (pwd !== null) {
+    alert('密码错误！');
+  }
+}
+
+async function loadAdminOrders() {
+  const page = document.getElementById('adminPage');
+  const tips = document.getElementById('adminTips');
+  const list = document.getElementById('adminOrderList');
+  if (page) page.classList.add('show');
+  if (tips) tips.textContent = '正在加载订单...';
+  
+  try {
+    const res = await fetch(API_BASE + '/api/orders/all');
+    const data = await res.json();
+    if (data.success) {
+      const activeOrders = data.orders.filter(o => ['accepted', 'cooking'].includes(o.status));
+      if (activeOrders.length === 0) {
+        if (tips) tips.textContent = '暂无进行中的订单';
+        if (list) list.innerHTML = '';
+      } else {
+        if (tips) tips.textContent = '共 ' + activeOrders.length + ' 个进行中订单';
+        renderAdminOrderList(activeOrders);
+      }
+    }
+  } catch (err) {
+    if (tips) tips.textContent = '加载失败：' + err.message;
+  }
+}
+
+function renderAdminOrderList(orders) {
+  const list = document.getElementById('adminOrderList');
+  if (!list) return;
+  
+  list.innerHTML = orders.map(o => {
+    const statusText = { 'accepted': '已接单', 'cooking': '制作中' }[o.status] || o.status;
+    const actions = o.status === 'accepted' 
+      ? `<button class="admin-btn-start" onclick="updateAdminOrderStatus('${o.no}', 'cooking')">开始制作</button>`
+      : o.status === 'cooking'
+        ? `<button class="admin-btn-done" onclick="updateAdminOrderStatus('${o.no}', 'done')">制作完成</button>`
+        : `<button class="admin-btn-disabled" disabled>已完成</button>`;
+    
+    return `
+      <div class="admin-order-item">
+        <div class="admin-order-header">
+          <span class="admin-order-no">${o.no}</span>
+          <span class="admin-order-amount">¥${o.total.toFixed(2)}</span>
+        </div>
+        <div class="admin-order-status">状态：${statusText}</div>
+        <div class="admin-order-actions">${actions}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function updateAdminOrderStatus(orderNo, status) {
+  try {
+    const res = await fetch(API_BASE + '/api/orders/' + encodeURIComponent(orderNo), {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: status })
+    });
+    const data = await res.json();
+    if (data.success) {
+      alert('状态更新成功！');
+      loadAdminOrders();
+    } else {
+      alert('更新失败：' + data.error);
+    }
+  } catch (err) {
+    alert('更新失败：' + err.message);
+  }
+}
+
+function closeAdminPage() {
+  const page = document.getElementById('adminPage');
+  if (page) page.classList.remove('show');
+}
+
+function contactShop() {
+  // 跳转到商家电话
+  const shopPhone = '13800138000';  // 替换为平哥的实际电话
+  window.location.href = 'tel:' + shopPhone;
+}
+
+// 页面销毁时清除定时器
+window.addEventListener('beforeunload', () => {
+  if (_statusPollTimer) clearInterval(_statusPollTimer);
+});
 
 function showPayState(state, extra) {
   var ready   = document.getElementById('redirectReady');
@@ -3694,7 +3993,27 @@ function downloadQRCode() {
 }
 
 // 页面加载时初始化二维码
-window.addEventListener('DOMContentLoaded', initQRCode);
+window.addEventListener('DOMContentLoaded', () => {
+  initQRCode();
+  // 检测URL参数，自动显示订单状态页
+  const params = new URLSearchParams(window.location.search);
+  const showStatus = params.get('show');
+  const orderNo = params.get('orderNo');
+  const total = params.get('total');
+  if (showStatus === 'status' && orderNo) {
+    setTimeout(() => {
+      showOrderStatusPage(orderNo, total ? parseFloat(total) : 0);
+    }, 500);
+  }
+
+  // 检测管理员入口（?admin=1）
+  const admin = params.get('admin');
+  if (admin === '1') {
+    setTimeout(() => {
+      showAdminPage();
+    }, 500);
+  }
+});
 
 // ===== 数据统计页面 =====
 let _statsLoaded = false;

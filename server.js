@@ -359,6 +359,29 @@ app.put('/api/orders/:orderNo', async (req, res) => {
 });
 
 // ============================================================
+// API：查询订单状态（轻量级，前端轮询用）
+// GET /api/orders/:orderNo/status
+// 只返回状态，不返回完整订单详情
+// ============================================================
+app.get('/api/orders/:orderNo/status', async (req, res) => {
+  try {
+    const orderNo = req.params.orderNo;
+    const token = await getTenantToken();
+    const baseUrl = `https://open.feishu.cn/open-apis/bitable/v1/apps/${FEISHU_CONFIG.appToken}/tables/${FEISHU_CONFIG.orderTableId}`;
+
+    const records = await fetchAllRecords(baseUrl, token);
+    const target = records.find(r => r.fields[ORDER_FIELDS.orderNo] === orderNo);
+    if (!target) return res.status(404).json({ success: false, error: '订单不存在' });
+
+    const status = target.fields[ORDER_FIELDS.status] || 'accepted';
+    res.json({ success: true, orderNo, status });
+  } catch (err) {
+    console.error('查询订单状态失败:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ============================================================
 // 辅助：安全解析 JSON（用于菜品详情字段）
 // ============================================================
 function safeParseJSON(str, fallback) {
