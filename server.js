@@ -738,6 +738,7 @@ app.get('/api/shoukuanba/pay-redirect', async (req, res) => {
       subject:      req.query.subject  || '企港渔叔-海鲜点餐',
       operator:     req.query.operator || '企港渔叔',
       return_url:   req.query.returnUrl || '',
+      pay_type:     'WAP',   // WAP支付必须指定
     };
 
     const sign = signWapParams(payParams, cred.key);
