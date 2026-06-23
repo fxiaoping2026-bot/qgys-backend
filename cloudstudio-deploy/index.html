@@ -23,14 +23,15 @@
     --radius: 14px;
     --radius-lg: 20px;
   }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); max-width: 480px; margin: 0 auto; min-height: 100vh; -webkit-font-smoothing: antialiased; }
+  html { height: 100%; overflow: hidden; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Helvetica Neue', sans-serif; background: var(--bg); color: var(--text); max-width: 480px; margin: 0 auto; min-height: 100vh; height: 100vh; overflow: hidden; -webkit-font-smoothing: antialiased; position: relative; }
 
   /* ===== 顶部店名栏 ===== */
   .store-header {
     background: linear-gradient(135deg, #0c1e3a 0%, #16335a 40%, #1a4a7a 100%);
     color: #fff;
     padding: 18px 16px 14px;
-    display: flex; align-items: center; gap: 12px;
+    display: flex; align-items: center; justify-content: center; gap: 12px;
     position: sticky; top: 0; z-index: 100;
     overflow: hidden;
   }
@@ -73,7 +74,7 @@
   .table-badge { margin-left: auto; background: linear-gradient(135deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08)); border-radius: 20px; padding: 5px 14px; font-size: 12px; color: #fff; flex-shrink: 0; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.12); }
 
   /* ===== 主体布局 ===== */
-  .main-body { display: flex; height: calc(100vh - 68px - 38px - 52px - 46px - 66px); }
+  .main-body { display: flex; flex: 1; overflow: hidden; }
 
   /* ===== 左侧分类 ===== */
   .cat-sidebar {
@@ -103,9 +104,7 @@
   .menu-list { flex: 1; overflow-y: auto; padding: 8px 10px 130px; background: var(--bg); }
   .menu-list::-webkit-scrollbar { display: none; }
   .menu-section-title {
-    padding: 14px 8px 8px; font-size: 13px; color: var(--primary);
-    background: transparent; font-weight: 800; letter-spacing: 1.5px;
-    position: sticky; top: 0; z-index: 5;
+    display: none;
   }
   .menu-section-title .section-fire { font-size: 15px; margin-right: 3px; }
   .menu-item {
@@ -333,11 +332,13 @@
   .order-no { background: var(--bg); border-radius: 10px; padding: 12px 20px; margin: 16px 0; font-size: 14px; }
   .order-no span { color: var(--primary); font-weight: 700; font-size: 16px; }
   .btn-back-menu { background: var(--primary); color: #fff; border: none; padding: 14px 40px; border-radius: 24px; font-size: 16px; font-weight: 700; cursor: pointer; margin-top: 8px; }
+  .btn-back-menu.btn-success-secondary { background: #fff; color: var(--primary); border: 2px solid var(--primary); }
+  .success-actions { display: flex; gap: 12px; justify-content: center; margin-top: 20px; width: 100%; }
 
   /* ===== 标签页导航 ===== */
   .page-tabs {
     display: flex; background: #fff;
-    position: sticky; top: calc(68px + 38px + 46px); z-index: 50;
+    position: sticky; top: 68px; z-index: 50;
     padding: 4px 12px; gap: 6px;
     box-shadow: var(--shadow-sm);
   }
@@ -356,6 +357,9 @@
 
   /* ===== 查询订单页 ===== */
   .lookup-page { padding: 28px 16px; min-height: calc(100vh - 130px); }
+  /* 查询订单页：确保在固定高度容器内正确滚动 */
+  #page-lookup.active { height: calc(100vh - 60px) !important; overflow-y: auto !important; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .lookup-result { padding-bottom: 40px; } /* 底部留白防止最后一条被截断 */
   .lookup-header { text-align: center; margin-bottom: 30px; padding-top: 24px; }
   .lookup-header h2 { font-size: 23px; font-weight: 800; margin-bottom: 8px; letter-spacing: 0.5px; }
   .lookup-header p { font-size: 14px; color: var(--text-sub); }
@@ -401,7 +405,16 @@
 
   /* 隐藏/显示页面 */
   .page { display: none; }
-  .page.active { display: flex; flex-direction: column; height: calc(100vh - 60px); overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .page.active {
+    display: flex; flex-direction: column;
+    height: calc(100vh - 60px); overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* 点餐页单独限制：禁止外层滚动，只让菜单区内部滚动 */
+  #page-menu.active {
+    height: calc(100vh - 68px - 38px - 52px - 46px - 66px);
+    overflow: hidden;
+  }
 
   /* ===== 后台 ===== */
   .admin-page { padding: 12px; min-height: calc(100vh - 130px); position: relative; }
@@ -546,19 +559,449 @@
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
+
+  /* ===== 外链跳转引导弹窗 ===== */
+  .jump-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.55); z-index: 9999;
+    display: flex; align-items: center; justify-content: center;
+    animation: fadeIn 0.25s ease;
+  }
+  .jump-modal {
+    background: #fff; border-radius: 20px;
+    width: 88%; max-width: 360px; padding: 32px 24px 24px;
+    text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.25);
+    animation: modalSlideUp 0.3s ease;
+  }
+  .jump-icon { font-size: 52px; margin-bottom: 16px; }
+  .jump-title {
+    font-size: 18px; font-weight: 700; color: #1a1a1a;
+    margin-bottom: 12px;
+  }
+  .jump-desc {
+    font-size: 14px; color: #666; line-height: 1.7;
+    margin-bottom: 20px;
+  }
+  .jump-url-box {
+    background: #f7f7f7; border-radius: 10px;
+    padding: 10px 12px; font-size: 12.5px; color: #e8441a;
+    word-break: break-all; margin-bottom: 18px;
+    border: 1px dashed rgba(232,68,26,0.27);
+    user-select: all;
+  }
+  .jump-btns { display: flex; justify-content: center; gap: 12px; }
+  .jump-btn {
+    flex: 1; padding: 11px 0; border-radius: 12px;
+    font-size: 15px; font-weight: 600; border: none;
+    cursor: pointer; transition: all 0.2s; font-family: inherit;
+  }
+  .jump-btn-primary {
+    background: linear-gradient(135deg, #e8441a, #ff6b3d);
+    color: #fff; box-shadow: 0 4px 14px rgba(232,68,26,0.35);
+  }
+  .jump-btn-primary:active { transform: scale(0.96); }
+  .jump-btn-ghost { background: #f5f5f5; color: #555; }
+  .jump-btn-ghost:active { background: #eee; }
+  .jump-copied-tip {
+    font-size: 12.5px; color: #07c160; margin-top: 10px;
+    display: none;
+  }
+
+  /* ===== SVG 图标样式 ===== */
+  .icon {
+    display: inline-block;
+    width: 1em; height: 1em;
+    vertical-align: -0.125em;
+    fill: currentColor;
+    flex-shrink: 0;
+  }
+  .store-logo .icon { width: 36px; height: 36px; color: #fff; }
+  .feat-icon .icon { width: 28px; height: 28px; }
+  .page-tab .icon { width: 18px; height: 18px; margin-right: 4px; vertical-align: middle; }
+  .cart-icon .icon { width: 22px; height: 22px; }
+  .cat-icon .icon { width: 16px; height: 16px; margin-right: 4px; }
+  .section-fire .icon { width: 16px; height: 16px; color: #e65100; }
+  .btn-action .icon { width: 14px; height: 14px; margin-right: 3px; }
+  .admin-section-title .icon { width: 16px; height: 16px; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes modalSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 </style>
+
+<!-- SVG 图标库 -->
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
+  <symbol id="icon-oyster" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3C7 3 3 7.5 3 12s4 9 9 9 9-4.5 9-9S17 3 12 3z" transform="scale(1, 0.7) translate(0, 3.6)"/>
+    <path d="M8 12 Q12 16 16 12" stroke-width="1"/>
+    <circle cx="12" cy="9" r="1.5" fill="currentColor" stroke="none"/>
+  </symbol>
+  <symbol id="icon-shrimp" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 14 C4 8, 8 4, 14 6 C18 7, 20 11, 18 15 C16 19, 10 20, 6 17 Z"/>
+    <circle cx="15" cy="9" r="1" fill="currentColor" stroke="none"/>
+    <path d="M4 14 Q2 12 3 10" stroke-width="1.2"/>
+    <path d="M6 16 Q4 18 5 20" stroke-width="1.2"/>
+  </symbol>
+  <symbol id="icon-pot" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 10 L4 16 C4 18, 6 20, 12 20 C18 20, 20 18, 20 16 L20 10 Z"/>
+    <path d="M4 10 L20 10"/>
+    <path d="M7 10 L7 7 C7 5.5, 8 4, 9.5 4 L14.5 4 C16 4, 17 5.5, 17 7 L17 10"/>
+    <line x1="9" y1="14" x2="15" y2="14"/>
+  </symbol>
+  <symbol id="icon-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 10 L12 3 L21 10"/>
+    <path d="M5 9.5 V19 C5 20, 6 21, 7 21 H17 C18 21, 19 20, 19 19 V9.5"/>
+    <rect x="9" y="14" width="6" height="7" fill="none"/>
+  </symbol>
+  <symbol id="icon-leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 21 C6 13, 12 6, 21 6" stroke-width="2"/>
+    <path d="M6 21 C8 18, 10 14, 12 10 C14 8, 16 7, 21 6" fill="currentColor" opacity="0.15"/>
+    <path d="M6 21 C10 19, 14 15, 17 10" stroke-width="1"/>
+  </symbol>
+  <symbol id="icon-fire" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 2 C12 2, 6 10, 6 14 C6 18, 8.5 21, 12 21 C15.5 21, 18 18, 18 14 C18 10, 12 2, 12 2 Z" fill="currentColor" opacity="0.2"/>
+    <path d="M12 7 C12 7, 9 12, 9 14 C9 16, 10 18, 12 18 C14 18, 15 16, 15 14 C15 12, 12 7, 12 7 Z" fill="currentColor" opacity="0.4"/>
+  </symbol>
+  <symbol id="icon-food" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 3 L6 8 C6 11, 7.5 13, 10 14 L10 21"/>
+    <path d="M10 3 L10 8 C10 11, 11.5 13, 14 14 L14 21"/>
+    <line x1="4" y1="21" x2="16" y2="21"/>
+    <line x1="8" y1="3" x2="8" y2="5"/>
+    <line x1="12" y1="3" x2="12" y2="5"/>
+  </symbol>
+  <symbol id="icon-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="16" height="20" rx="2"/>
+    <path d="M8 2 L8 6 C8 7, 9 8, 10 8 L14 8 C15 8, 16 7, 16 6 L16 2"/>
+    <line x1="8" y1="6" x2="8" y2="8"/>
+    <line x1="16" y1="6" x2="16" y2="8"/>
+    <line x1="8" y1="12" x2="16" y2="12"/>
+    <line x1="8" y1="16" x2="16" y2="16"/>
+  </symbol>
+  <symbol id="icon-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M12 1 L12 4"/>
+    <path d="M12 20 L12 23"/>
+    <path d="M4.22 4.22 L6.34 6.34"/>
+    <path d="M17.66 17.66 L19.78 19.78"/>
+    <path d="M1 12 L4 12"/>
+    <path d="M20 12 L23 12"/>
+    <path d="M4.22 19.78 L6.34 17.66"/>
+    <path d="M17.66 6.34 L19.78 4.22"/>
+  </symbol>
+  <symbol id="icon-cart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="9" cy="20" r="1.5"/>
+    <circle cx="18" cy="20" r="1.5"/>
+    <path d="M1 1 L4 1 L5.5 13 C5.8 15, 7.5 16.5, 9.5 16.5 L18 16.5 C20 16.5, 21.5 15, 21.5 13 L23 5 L6 5"/>
+  </symbol>
+  <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <line x1="12" y1="5" x2="12" y2="19"/>
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </symbol>
+  <symbol id="icon-minus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <line x1="5" y1="12" x2="19" y2="12"/>
+  </symbol>
+  <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <line x1="6" y1="6" x2="18" y2="18"/>
+    <line x1="18" y1="6" x2="6" y2="18"/>
+  </symbol>
+  <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="4 12, 9 17, 20 6"/>
+  </symbol>
+  <symbol id="icon-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3 L12 15"/>
+    <polyline points="7 8, 12 3, 17 8"/>
+    <path d="M3 15 L3 20 C3 21, 4 22, 5 22 L19 22 C20 22, 21 21, 21 20 L21 15"/>
+  </symbol>
+  <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 3 L12 15"/>
+    <polyline points="7 10, 12 15, 17 10"/>
+    <path d="M3 15 L3 20 C3 21, 4 22, 5 22 L19 22 C20 22, 21 21, 21 20 L21 15"/>
+  </symbol>
+  <symbol id="icon-save" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M4 1 L4 23"/>
+    <path d="M20 1 L20 23"/>
+    <path d="M4 1 L16 1 L20 5 L20 23 L4 23 Z"/>
+    <rect x="7" y="4" width="6" height="5" rx="1" fill="currentColor" opacity="0.2"/>
+    <line x1="7" y1="13" x2="17" y2="13"/>
+    <line x1="7" y1="16" x2="17" y2="16"/>
+  </symbol>
+  <symbol id="icon-store" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M3 12 L3 21 L21 21 L21 12"/>
+    <path d="M7 12 L7 21"/>
+    <path d="M17 12 L17 21"/>
+    <path d="M3 12 L1 7 L5 7 L7 12"/>
+    <path d="M21 12 L23 7 L19 7 L17 12"/>
+    <line x1="12" y1="1" x2="12" y2="12"/>
+    <path d="M7 7 L7 3 L17 3 L17 7"/>
+  </symbol>
+</svg>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js">
+// ===== 数据统计页面 =====
+let _statsLoaded = false;
+let _funnelChart = null;
+let _trendChart = null;
+let _hotItemsChart = null;
+
+function loadStats() {
+  const startDate = document.getElementById('statsStartDate').value;
+  const endDate = document.getElementById('statsEndDate').value;
+
+  // 设置默认日期范围（最近7天）
+  if (!startDate) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 7);
+    document.getElementById('statsStartDate').value = start.toISOString().split('T')[0];
+    document.getElementById('statsEndDate').value = end.toISOString().split('T')[0];
+  }
+
+  const params = new URLSearchParams();
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+
+  // 加载统计数据
+  fetch(API_BASE + '/api/analytics/detail?' + params.toString())
+    .then(res => res.json())
+    .then(data => {
+      renderStats(data);
+      _statsLoaded = true;
+    })
+    .catch(err => {
+      console.error('加载统计数据失败:', err);
+      showToast('加载统计数据失败');
+    });
+
+  // 加载今日概览
+  fetch(API_BASE + '/api/analytics')
+    .then(res => res.json())
+    .then(data => {
+      renderOverview(data);
+    })
+    .catch(err => {
+      console.error('加载概览数据失败:', err);
+    });
+}
+
+function renderOverview(data) {
+  // 今日访客
+  const uv = data.totalUsers || 0;
+  document.getElementById('statUV').textContent = uv;
+
+  // 加购转化率
+  const addToCartUsers = (data.events && data.events.add_to_cart) ? data.events.add_to_cart.users : 0;
+  const addRate = uv > 0 ? (addToCartUsers / uv * 100).toFixed(1) : 0;
+  document.getElementById('statAddRate').textContent = addRate + '%';
+  document.getElementById('statAddDetail').textContent = addToCartUsers + '/' + uv;
+
+  // 下单转化率
+  const orderUsers = (data.events && data.events.submit_order) ? data.events.submit_order.users : 0;
+  const orderRate = uv > 0 ? (orderUsers / uv * 100).toFixed(1) : 0;
+  document.getElementById('statOrderRate').textContent = orderRate + '%';
+  document.getElementById('statOrderDetail').textContent = orderUsers + '/' + uv;
+
+  // 复购率
+  const repeatUsers = data.repeatUsers || 0;
+  const repeatRate = uv > 0 ? (repeatUsers / uv * 100).toFixed(1) : 0;
+  document.getElementById('statRepeatRate').textContent = repeatRate + '%';
+  document.getElementById('statRepeatDetail').textContent = repeatUsers + '/' + uv;
+}
+
+function renderStats(data) {
+  // 渲染漏斗图
+  renderFunnelChart(data);
+
+  // 渲染趋势图
+  renderTrendChart(data);
+
+  // 渲染热门菜品图
+  renderHotItemsChart(data);
+
+  // 渲染每日数据表格
+  renderDailyStatsTable(data);
+}
+
+function renderFunnelChart(data) {
+  const ctx = document.getElementById('funnelChart').getContext('2d');
+
+  if (_funnelChart) _funnelChart.destroy();
+
+  const events = data.events || {};
+  const pageViewUsers = (events.page_view || {}).users || 0;
+  const addToCartUsers = (events.add_to_cart || {}).users || 0;
+  const submitOrderUsers = (events.submit_order || {}).users || 0;
+  const orderPaidUsers = (events.order_paid || {}).users || 0;
+
+  _funnelChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['页面浏览', '加购', '提交订单', '支付完成'],
+      datasets: [{
+        label: '用户数',
+        data: [pageViewUsers, addToCartUsers, submitOrderUsers, orderPaidUsers],
+        backgroundColor: [
+          'rgba(232, 68, 26, 0.7)',
+          'rgba(46, 125, 50, 0.7)',
+          'rgba(21, 101, 192, 0.7)',
+          'rgba(230, 81, 0, 0.7)'
+        ],
+        borderColor: [
+          'rgba(232, 68, 26, 1)',
+          'rgba(46, 125, 50, 1)',
+          'rgba(21, 101, 192, 1)',
+          'rgba(230, 81, 0, 1)'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderTrendChart(data) {
+  const ctx = document.getElementById('trendChart').getContext('2d');
+
+  if (_trendChart) _trendChart.destroy();
+
+  const dailyStats = data.dailyStats || [];
+  const dates = dailyStats.map(item => item.date);
+  const pageViewData = dailyStats.map(item => (item.page_view || {}).users || 0);
+  const orderData = dailyStats.map(item => (item.submit_order || {}).users || 0);
+
+  _trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [
+        {
+          label: '访客数',
+          data: pageViewData,
+          borderColor: 'rgba(232, 68, 26, 1)',
+          backgroundColor: 'rgba(232, 68, 26, 0.1)',
+          tension: 0.4
+        },
+        {
+          label: '下单用户',
+          data: orderData,
+          borderColor: 'rgba(21, 101, 192, 1)',
+          backgroundColor: 'rgba(21, 101, 192, 0.1)',
+          tension: 0.4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderHotItemsChart(data) {
+  const ctx = document.getElementById('hotItemsChart').getContext('2d');
+
+  if (_hotItemsChart) _hotItemsChart.destroy();
+
+  const hotItems = (data.hotItems || []).slice(0, 10);
+  const itemNames = hotItems.map(item => item.item_name || '未知');
+  const viewCounts = hotItems.map(item => item.view_count || 0);
+
+  _hotItemsChart = new Chart(ctx, {
+    type: 'horizontalBar',
+    data: {
+      labels: itemNames,
+      datasets: [{
+        label: '被加购次数',
+        data: viewCounts,
+        backgroundColor: 'rgba(232, 68, 26, 0.7)',
+        borderColor: 'rgba(232, 68, 26, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: { beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderDailyStatsTable(data) {
+  const dailyStats = data.dailyStats || [];
+  let html = '<table style="width:100%;border-collapse:collapse;">';
+  html += '<tr style="background:#f5f5f5;font-weight:700;"><td style="padding:8px;border:1px solid #ddd;">日期</td><td style="padding:8px;border:1px solid #ddd;">页面浏览用户</td><td style="padding:8px;border:1px solid #ddd;">加购用户</td><td style="padding:8px;border:1px solid #ddd;">下单用户</td></tr>';
+
+  dailyStats.forEach(item => {
+    html += '<tr>';
+    html += '<td style="padding:8px;border:1px solid #ddd;">' + item.date + '</td>';
+    html += '<td style="padding:8px;border:1px solid #ddd;">' + ((item.page_view || {}).users || 0) + '</td>';
+    html += '<td style="padding:8px;border:1px solid #ddd;">' + ((item.add_to_cart || {}).users || 0) + '</td>';
+    html += '<td style="padding:8px;border:1px solid #ddd;">' + ((item.submit_order || {}).users || 0) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</table>';
+  document.getElementById('dailyStatsTable').innerHTML = html;
+}
+
+// 同步统计数据到飞书
+function syncStatsToFeishu() {
+  showToast('正在同步到飞书...');
+
+  fetch(API_BASE + '/api/analytics/sync-to-feishu', {
+    method: 'POST'
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        showToast('✅ 已同步到飞书！');
+      } else {
+        showToast('❌ 同步失败：' + (data.error || '未知错误'));
+      }
+    })
+    .catch(err => {
+      console.error('同步到飞书失败:', err);
+      showToast('❌ 同步失败，请检查网络');
+    });
+}
+
+// 页面显示时加载统计数据
+const _origSwitchPage = switchPage;
+switchPage = function(page) {
+  _origSwitchPage(page);
+  if (page === 'stats' && !_statsLoaded) {
+    loadStats();
+  }
+};
+
+</script>
 </head>
 <body>
 
 <!-- 顶部店名 -->
 <div class="store-header">
-  <button class="btn-exit" onclick="confirmExit()">↩️ 退出</button>
-  <div class="store-logo">🦪</div>
+  <div class="store-logo"><svg class="icon icon-oyster"><use href="#icon-oyster"/></svg></div>
   <div class="store-info">
     <h1>企港渔叔社区海鲜厨房</h1>
     <p>鲜活零售 · 蒸汽现蒸 · 生蚝夜宵</p>
   </div>
-  <div class="table-badge" id="tableLabel">扫码点餐</div>
 </div>
 
 <!-- 品牌Slogan栏 -->
@@ -570,33 +1013,23 @@
 
 <!-- 特色卖点横幅 -->
 <div class="feature-bar">
-  <div class="feature-item"><span class="feat-icon">🦐</span><span class="feat-label">鲜活现捞</span><span class="feat-desc">当天到店</span></div>
-  <div class="feature-item"><span class="feat-icon">🫕</span><span class="feat-label">现蒸现做</span><span class="feat-desc">热气上桌</span></div>
-  <div class="feature-item"><span class="feat-icon">🏠</span><span class="feat-label">社区自提</span><span class="feat-desc">无需排队</span></div>
-  <div class="feature-item"><span class="feat-icon">🌿</span><span class="feat-label">少油少盐</span><span class="feat-desc">健康美味</span></div>
-</div>
-
-<!-- 社交媒体入口（精简版） -->
-<div class="social-banner">
-  <span class="social-btn douyin" onclick="confirmJump('https://v.douyin.com/76164539251', '抖音')">
-    <span class="social-icon">🎵</span> 关注抖音 · 看鲜活海鲜直播
-  </span>
-  <span class="social-btn weixin" onclick="confirmJump('https://channels.weixin.qq.com/platform/s?sphruTmkUxYAjqN', '视频号')">
-    <span class="social-icon">💬</span> 关注视频号
-  </span>
+  <div class="feature-item"><span class="feat-icon"><svg class="icon icon-shrimp"><use href="#icon-shrimp"/></svg></span><span class="feat-label">鲜活现捞</span><span class="feat-desc">当天到店</span></div>
+  <div class="feature-item"><span class="feat-icon"><svg class="icon icon-pot"><use href="#icon-pot"/></svg></span><span class="feat-label">现蒸现做</span><span class="feat-desc">热气上桌</span></div>
+  <div class="feature-item"><span class="feat-icon"><svg class="icon icon-home"><use href="#icon-home"/></svg></span><span class="feat-label">社区自提</span><span class="feat-desc">无需排队</span></div>
+  <div class="feature-item"><span class="feat-icon"><svg class="icon icon-leaf"><use href="#icon-leaf"/></svg></span><span class="feat-label">少油少盐</span><span class="feat-desc">健康美味</span></div>
 </div>
 
 <!-- 顶部标签（顾客只看到 点餐 和 查询订单） -->
 <div class="page-tabs" id="customerTabs">
-  <div class="page-tab active" onclick="switchPage('menu')">🍽 点餐</div>
-  <div class="page-tab" onclick="switchPage('lookup')">📋 查询订单</div>
+  <div class="page-tab active" onclick="switchPage('menu')"><svg class="icon icon-food"><use href="#icon-food"/></svg> 点餐</div>
+  <div class="page-tab" onclick="switchPage('lookup')"><svg class="icon icon-clipboard"><use href="#icon-clipboard"/></svg> 查询订单</div>
 </div>
 
 <!-- 商家后台入口（默认隐藏，连续点击店名5次可唤出） -->
 <div class="page-tabs" id="adminTabs" style="display:none;">
-  <div class="page-tab" onclick="switchPage('menu')">🍽 点餐</div>
-  <div class="page-tab" onclick="switchPage('admin')">🏪 商家后台</div>
-  <div class="page-tab" onclick="switchPage('lookup')">📋 查询订单</div>
+  <div class="page-tab" onclick="switchPage('menu')"><svg class="icon icon-food"><use href="#icon-food"/></svg> 点餐</div>
+  <div class="page-tab active" onclick="switchPage('admin')"><svg class="icon icon-store"><use href="#icon-store"/></svg> 商家后台</div>
+  <div class="page-tab" onclick="switchPage('lookup')"><svg class="icon icon-clipboard"><use href="#icon-clipboard"/></svg> 查询订单</div>
 </div>
 
 <!-- 商家密码验证弹窗 -->
@@ -634,7 +1067,7 @@
   <!-- 购物车底栏 -->
   <div class="cart-bar">
     <div class="cart-icon-wrap" onclick="toggleCart()">
-      <span class="cart-icon">🛒</span>
+      <span class="cart-icon"><svg class="icon icon-cart"><use href="#icon-cart"/></svg></span>
       <span class="cart-badge" id="cartBadge" style="display:none">0</span>
     </div>
     <div class="cart-total">
@@ -648,6 +1081,18 @@
 <!-- ===== 商家后台页 ===== -->
 <div class="page" id="page-admin">
   <div class="admin-page" id="adminPageContent">
+    <!-- 商家后台子标签 -->
+    <div style="display:flex;gap:0;margin-bottom:16px;background:#f0f0f0;border-radius:10px;padding:3px;">
+      <div id="adminTabOrders" class="admin-sub-tab active" onclick="switchAdminTab('orders')" style="flex:1;text-align:center;padding:8px 12px;font-size:13px;font-weight:600;color:#666;border-radius:8px;cursor:pointer;transition:all 0.2s;background:#fff;color:var(--primary);box-shadow:0 1px 3px rgba(0,0,0,0.08);">
+        <svg class="icon" style="width:15px;height:15px;vertical-align:middle;margin-right:3px;"><use href="#icon-clipboard"/></svg> 订单管理
+      </div>
+      <div id="adminTabStats" class="admin-sub-tab" onclick="switchAdminTab('stats')" style="flex:1;text-align:center;padding:8px 12px;font-size:13px;font-weight:600;color:#666;border-radius:8px;cursor:pointer;transition:all 0.2s;">
+        <svg class="icon icon-gear" style="width:15px;height:15px;vertical-align:middle;margin-right:3px;"><use href="#icon-gear"/></svg> 数据统计
+      </div>
+    </div>
+
+    <!-- ===== 订单管理内容 ===== -->
+    <div id="adminContentOrders">
     <!-- 下拉刷新指示器 -->
     <div id="pullRefreshIndicator" style="position:absolute;top:0;left:0;right:0;height:40px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#2e7d32;background:#e8f5e9;transform:translateY(-100%);transition:transform 0.2s;z-index:10;">
       <span id="pullRefreshText">↓ 下拉刷新订单</span>
@@ -671,7 +1116,7 @@
     <div id="activeOrdersSection" style="margin-bottom:20px;">
       <div class="admin-section-title" onclick="toggleActiveOrders()" style="cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:4px;">
         <span>
-          📋 实时订单
+          <svg class="icon icon-clipboard" style="width:18px;height:18px;vertical-align:middle;margin-right:4px;"><use href="#icon-clipboard"/></svg> 实时订单
           <span id="activeOrdersArrow" style="font-size:12px;transition:transform 0.2s;display:inline-block;transform:rotate(90deg);">▶</span>
           <span id="activeOrdersCount" style="font-size:12px;color:#999;font-weight:normal;"></span>
         </span>
@@ -730,9 +1175,9 @@
       </div>
       <div id="menuManageBody">
         <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-          <button class="btn-sync" onclick="doSyncToFeishu()" style="background:#e8f5e9;color:#2e7d32;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;">📤 同步到飞书</button>
-          <button class="btn-sync" onclick="doLoadFromFeishu()" style="background:#e3f2fd;color:#1565c0;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;">📥 从飞书加载</button>
-          <button class="btn-sync" onclick="showApiSettings()" style="background:#fff3e0;color:#e65100;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;">⚙️ 后端设置</button>
+          <button class="btn-sync" onclick="doSyncToFeishu()" style="background:#e8f5e9;color:#2e7d32;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;"><svg class="icon icon-upload"><use href="#icon-upload"/></svg> 同步到飞书</button>
+          <button class="btn-sync" onclick="doLoadFromFeishu()" style="background:#e3f2fd;color:#1565c0;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;"><svg class="icon icon-download"><use href="#icon-download"/></svg> 从飞书加载</button>
+          <button class="btn-sync" onclick="showApiSettings()" style="background:#fff3e0;color:#e65100;font-size:13px;padding:6px 14px;border:none;border-radius:6px;cursor:pointer;"><svg class="icon icon-gear"><use href="#icon-gear"/></svg> 后端设置</button>
           <span id="syncStatus" style="font-size:12px;color:#888;line-height:32px;"></span>
         </div>
         <div id="adminMenuList"></div>
@@ -752,11 +1197,82 @@
         </p>
         <input type="text" id="h5UrlInput" readonly style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px;font-size:12px;background:#f9f9f9;" onclick="this.select()">
         <div style="display:flex;gap:8px;margin-top:8px;">
-          <button onclick="copyH5Url()" style="padding:6px 12px;border:none;border-radius:6px;background:#e3f2fd;color:#1565c0;cursor:pointer;font-size:12px;">📋 复制链接</button>
-          <button onclick="downloadQRCode()" style="padding:6px 12px;border:none;border-radius:6px;background:#e8f5e9;color:#2e7d32;cursor:pointer;font-size:12px;">💾 下载二维码</button>
+          <button onclick="copyH5Url()" style="padding:6px 12px;border:none;border-radius:6px;background:#e3f2fd;color:#1565c0;cursor:pointer;font-size:12px;"><svg class="icon icon-clipboard"><use href="#icon-clipboard"/></svg> 复制链接</button>
+          <button onclick="downloadQRCode()" style="padding:6px 12px;border:none;border-radius:6px;background:#e8f5e9;color:#2e7d32;cursor:pointer;font-size:12px;"><svg class="icon icon-save"><use href="#icon-save"/></svg> 下载二维码</button>
         </div>
       </div>
     </div>
+    </div><!-- /adminContentOrders -->
+
+    <!-- ===== 数据统计内容（默认隐藏） ===== -->
+    <div id="adminContentStats" style="display:none;">
+      <div class="admin-section-title">
+        <svg class="icon icon-gear" style="width:16px;height:16px;"><use href="#icon-gear"/></svg>
+        用户行为数据统计
+      </div>
+
+      <!-- 日期范围选择 -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+        <label style="font-size:13px;color:#666;">起始：</label>
+        <input type="date" id="statsStartDate" style="padding:6px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+        <label style="font-size:13px;color:#666;">结束：</label>
+        <input type="date" id="statsEndDate" style="padding:6px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+        <button onclick="loadStats()" style="padding:6px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;">查询</button>
+        <button onclick="syncStatsToFeishu()" style="padding:6px 16px;background:#fff;color:var(--primary);border:1px solid var(--primary);border-radius:8px;font-size:13px;cursor:pointer;">同步到飞书</button>
+      </div>
+
+      <!-- 核心指标卡片 -->
+      <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:10px;margin-bottom:20px;" id="statsCards">
+        <div style="background:linear-gradient(135deg, #e8441a, #ff6b3d);color:#fff;padding:16px;border-radius:14px;box-shadow:0 4px 12px rgba(232,68,26,0.3);">
+          <div style="font-size:12px;opacity:0.9;">今日访客</div>
+          <div style="font-size:28px;font-weight:800;margin:8px 0;" id="statUV">-</div>
+          <div style="font-size:11px;opacity:0.8;">独立用户数</div>
+        </div>
+        <div style="background:linear-gradient(135deg, #2e7d32, #4caf50);color:#fff;padding:16px;border-radius:14px;box-shadow:0 4px 12px rgba(46,125,50,0.3);">
+          <div style="font-size:12px;opacity:0.9;">加购转化率</div>
+          <div style="font-size:28px;font-weight:800;margin:8px 0;" id="statAddRate">-</div>
+          <div style="font-size:11px;opacity:0.8;" id="statAddDetail">加购/访客</div>
+        </div>
+        <div style="background:linear-gradient(135deg, #1565c0, #42a5f5);color:#fff;padding:16px;border-radius:14px;box-shadow:0 4px 12px rgba(21,101,192,0.3);">
+          <div style="font-size:12px;opacity:0.9;">下单转化率</div>
+          <div style="font-size:28px;font-weight:800;margin:8px 0;" id="statOrderRate">-</div>
+          <div style="font-size:11px;opacity:0.8;" id="statOrderDetail">下单/访客</div>
+        </div>
+        <div style="background:linear-gradient(135deg, #e65100, #ff9800);color:#fff;padding:16px;border-radius:14px;box-shadow:0 4px 12px rgba(230,81,0,0.3);">
+          <div style="font-size:12px;opacity:0.9;">复购率</div>
+          <div style="font-size:28px;font-weight:800;margin:8px 0;" id="statRepeatRate">-</div>
+          <div style="font-size:11px;opacity:0.8;" id="statRepeatDetail">复购用户/总用户</div>
+        </div>
+      </div>
+
+      <!-- 图表区域 -->
+      <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:20px;">
+        <!-- 用户行为漏斗 -->
+        <div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">用户行为漏斗</div>
+          <canvas id="funnelChart" style="width:100%;height:200px;"></canvas>
+        </div>
+        <!-- 每日趋势 -->
+        <div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">每日趋势（最近7天）</div>
+          <canvas id="trendChart" style="width:100%;height:200px;"></canvas>
+        </div>
+        <!-- 热门菜品 -->
+        <div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">热门菜品 TOP 10</div>
+          <canvas id="hotItemsChart" style="width:100%;height:300px;"></canvas>
+        </div>
+      </div>
+
+      <!-- 原始数据表格 -->
+      <div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:20px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">每日详细数据</div>
+        <div id="dailyStatsTable" style="font-size:13px;color:#666;">
+          加载中...
+        </div>
+      </div>
+    </div><!-- /adminContentStats -->
+
   </div>
 </div>
 
@@ -764,7 +1280,7 @@
 <div class="page" id="page-lookup">
   <div class="lookup-page">
     <div class="lookup-header">
-      <h2>📋 查询我的订单</h2>
+      <h2><svg class="icon icon-clipboard" style="width:24px;height:24px;vertical-align:middle;margin-right:6px;"><use href="#icon-clipboard"/></svg> 查询我的订单</h2>
       <p>输入下单时的手机号，查看订单状态</p>
     </div>
 
@@ -876,7 +1392,10 @@
   <p style="font-size:13px;color:var(--primary);margin-top:8px;">⏰ 下班不用做饭 · 15分钟带走</p>
   <div class="order-no">订单编号：<span id="successOrderNo"></span></div>
   <p style="font-size:12px;color:#aaa;">到店出示此订单号即可取餐</p>
-  <button class="btn-back-menu" onclick="backToMenu()">继续点餐</button>
+  <div class="success-actions">
+    <button class="btn-back-menu btn-success-secondary" onclick="viewMyOrder()">📋 查看我的订单</button>
+    <button class="btn-back-menu" onclick="backToMenu()">继续点餐</button>
+  </div>
 </div>
 
 <!-- 菜单编辑弹窗 -->
@@ -1088,7 +1607,7 @@ function renderMenu() {
   const list = document.getElementById('menuList');
   list.innerHTML = menuData.map(cat => `
     <div id="section-${cat.id}">
-      <div class="menu-section-title"><span class="section-fire">🔥</span>${cat.name}</div>
+      <div class="menu-section-title"><span class="section-fire"><svg class="icon icon-fire"><use href="#icon-fire"/></svg></span>${cat.name}</div>
       ${cat.items.map(item => renderMenuItem(item)).join('')}
     </div>
   `).join('');
@@ -1139,19 +1658,57 @@ function scrollToSection(catId, el) {
   if (target) target.scrollIntoView({ behavior: 'smooth' });
 }
 
+// ===== 菜单区滚动联动左侧分类（scroll-spy）=====
+let _scrollSpyTimer = null;
+function setupScrollSpy() {
+  const menuList = document.getElementById('menuList');
+  if (!menuList) return;
+  menuList.addEventListener('scroll', function() {
+    if (_scrollSpyTimer) return;
+    _scrollSpyTimer = setTimeout(function() {
+      _scrollSpyTimer = null;
+      var sections = [];
+      menuData.forEach(function(cat) {
+        var el = document.getElementById('section-' + cat.id);
+        if (el) sections.push({ id: cat.id, el: el, top: el.offsetTop });
+      });
+      var scrollTop = menuList.scrollTop + 12; // 小偏移量
+      var activeIdx = 0;
+      for (var i = sections.length - 1; i >= 0; i--) {
+        if (scrollTop >= sections[i].top) { activeIdx = i; break; }
+      }
+      var cats = document.querySelectorAll('.cat-item');
+      cats.forEach(function(c, idx) {
+        if (idx === activeIdx) c.classList.add('active'); else c.classList.remove('active');
+      });
+      // 左侧侧栏也滚动到可见区域
+      var activeCat = cats[activeIdx];
+      if (activeCat) activeCat.scrollIntoView({ block: 'nearest' });
+    }, 60);
+  }, { passive: true });
+}
+// 页面加载后初始化滚动监听
+setTimeout(setupScrollSpy, 500);
+
 // ===== 购物车操作 =====
 function addItem(id) {
   const item = findItem(id);
   if (!item) return;
-  // 换购品门槛检查（双重保险，名称含"换购"自动识别）
+
+  // 追踪加购事件
+  trackEvent('add_to_cart', {
+    itemId: id,
+    itemName: item.name,
+    price: item.price
+  });
+
   const threshold = getPromoThreshold(item);
   if (threshold > 0) {
     const baseTotal = getCartBaseSubtotal();
     if (baseTotal < threshold) {
       showToast(`⚠️ 需满${threshold}元才可换购「${item.name}」（当前¥${baseTotal.toFixed(1)}）`);
-      return; // 硬拦截，不允许加入购物车
+      return;
     }
-    // 换购品限1份
     if (cart[id] && cart[id] >= 1) {
       showToast(`⚠️「${item.name}」限购1份`);
       return;
@@ -1190,6 +1747,23 @@ function changeQty(id, delta) {
   // 减少数量后重新检查换购品是否还满足门槛（防止删了其他菜导致不满额）
   if (delta < 0) {
     enforcePromoRules();
+  }
+
+  // 追踪购物车数量变化
+  if (delta > 0 && item) {
+    trackEvent('add_to_cart', {
+      itemId: id,
+      itemName: item.name,
+      price: item.price,
+      quantity: delta
+    });
+  } else if (delta < 0 && item) {
+    trackEvent('remove_from_cart', {
+      itemId: id,
+      itemName: item.name,
+      price: item.price,
+      quantity: Math.abs(delta)
+    });
   }
 }
 
@@ -1334,6 +1908,19 @@ function submitOrder() {
   // 保存到本地
   orders.unshift(newOrder);
   saveOrdersToLocal();
+
+  // 保存手机号到 localStorage（下次访问自动识别用户）
+  localStorage.setItem('qgys_user_phone', phone);
+
+  // 追踪订单提交（带上手机号）
+  trackEvent('submit_order', {
+    orderNo: orderNo,
+    total: total,
+    itemCount: items.length,
+    phone: phone,
+    items: items.map(i => ({ name: i.name, qty: i.qty }))
+  });
+
   // 不同步到后台，等用户付款确认后再推（confirmPayment 中处理）
 
   closeCheckout();
@@ -1381,6 +1968,13 @@ function confirmPayment() {
     saveOrdersToLocal();
     // 整条订单推给后台（此时才第一次同步，确保用户已确认付款）
     syncOrderToAPI(o);
+
+    // 追踪订单支付确认
+    trackEvent('order_paid', {
+      orderNo: o.no,
+      total: o.total,
+      status: o.status
+    });
   }
 
   document.getElementById('payPage').classList.remove('show');
@@ -1701,6 +2295,11 @@ function backToMenu() {
   document.getElementById('successPage').classList.remove('show');
 }
 
+function viewMyOrder() {
+  document.getElementById('successPage').classList.remove('show');
+  switchPage('lookup');
+}
+
 // ===== 手机号查询订单 =====
 async function doLookupOrder() {
   const phone = document.getElementById('lookupPhone').value.trim();
@@ -1722,15 +2321,17 @@ async function doLookupOrder() {
     return;
   }
 
-  // 最新订单排在最前面
-  matched.sort(function(a, b) { return (b.time || '').localeCompare(a.time || ''); });
+  // 最新订单排在最前面（按真实时间戳倒序）
+  matched.sort(function(a, b) {
+    var ta = parseOrderTime(a.time);
+    var tb = parseOrderTime(b.time);
+    return tb - ta;
+  });
 
   // 状态映射
   const statusMap = {
     'pending':   { text: '待确认收款', color: '#a0522d', bg: '#ffe5b4' },
     'confirmed': { text: '已确认收款',   color: '#004085', bg: '#e7f3ff' },
-    'ready':     { text: '待制作',       color: '#e65100', bg: '#fff8e1' },
-    'started':   { text: '已开始制作',   color: '#bf360c', bg: '#fff3e0' },
     'making':    { text: '制作中',       color: '#004085', bg: '#cce5ff' },
     'done':      { text: '已完成',       color: '#155724', bg: '#d4edda' },
     'cancelled': { text: '已取消',       color: '#721c24', bg: '#f8d7da' },
@@ -1763,10 +2364,23 @@ async function doLookupOrder() {
 
 // ===== 页面切换 =====
 function switchPage(page) {
+  // 追踪页面切换
+  trackEvent('page_view', { page: page });
+
   // 商家后台需要密码验证（除非已通过验证或 session 内已认证）
   if (page === 'admin' && !_adminAuthPassed) {
     showAdminPwdModal();
     return;
+  }
+  // 数据统计已迁移到商家后台子标签
+  if (page === 'stats') {
+    if (!_adminAuthPassed) {
+      showAdminPwdModal();
+      // 标记登录后跳转到统计页
+      _adminRedirectTo = 'stats';
+      return;
+    }
+    page = 'admin';
   }
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.page-tab').forEach(t => t.classList.remove('active'));
@@ -1775,7 +2389,57 @@ function switchPage(page) {
   const tabs = document.querySelectorAll(`.page-tab[onclick="switchPage('${page}')"]`);
   if (tabs.length > 0) tabs[0].classList.add('active');
 
-  if (page === 'admin') renderAdminPage();
+  // 查订单页自动填入手机号
+  if (page === 'lookup') {
+    const savedPhone = localStorage.getItem('qgys_user_phone');
+    if (savedPhone) {
+      const phoneInput = document.getElementById('lookupPhone');
+      if (phoneInput && !phoneInput.value) phoneInput.value = savedPhone;
+    }
+  }
+
+  if (page === 'admin') {
+    renderAdminPage();
+    // 如果是从 stats 跳转过来的，切换到数据统计子标签
+    if (_adminRedirectTo === 'stats') {
+      _adminRedirectTo = '';
+      switchAdminTab('stats');
+    }
+  }
+}
+
+// 商家后台子标签切换（订单管理 / 数据统计）
+function switchAdminTab(tab) {
+  var ordersTab = document.getElementById('adminTabOrders');
+  var statsTab = document.getElementById('adminTabStats');
+  var ordersContent = document.getElementById('adminContentOrders');
+  var statsContent = document.getElementById('adminContentStats');
+
+  if (tab === 'stats') {
+    ordersTab.style.background = '';
+    ordersTab.style.color = '#666';
+    ordersTab.style.boxShadow = 'none';
+    ordersTab.classList.remove('active');
+    statsTab.style.background = '#fff';
+    statsTab.style.color = 'var(--primary)';
+    statsTab.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+    statsTab.classList.add('active');
+    ordersContent.style.display = 'none';
+    statsContent.style.display = '';
+    // 切换到统计页时自动加载数据
+    loadStats();
+  } else {
+    statsTab.style.background = '';
+    statsTab.style.color = '#666';
+    statsTab.style.boxShadow = 'none';
+    statsTab.classList.remove('active');
+    ordersTab.style.background = '#fff';
+    ordersTab.style.color = 'var(--primary)';
+    ordersTab.style.boxShadow = '0 1px 3px rgba(0,0,0,0.08)';
+    ordersTab.classList.add('active');
+    statsContent.style.display = 'none';
+    ordersContent.style.display = '';
+  }
 }
 
 // ===== 商家后台密码保护 =====
@@ -1783,6 +2447,7 @@ const ADMIN_PASSWORD = 'qgys888';  // 商家密码，可自行修改
 let _adminAuthPassed = false;      // 是否已通过验证
 let _adminTapCount = 0;            // 连续点击店名次数（隐藏入口）
 let _adminTapTimer = null;
+let _adminRedirectTo = '';         // 登录后要跳转到的子标签（如 'stats'）
 
 // 从 sessionStorage 恢复登录状态（同一标签页内切换页面不需要重新输密码）
 try {
@@ -1806,10 +2471,28 @@ function showExitPage() {
     </div>
   `;
 }
-// 外部链接跳转二次确认
+// 外部链接跳转引导（微信限制处理）
+let _jumpUrl = '';
 function confirmJump(url, name) {
-  const confirmed = confirm('确定要跳转到' + name + '吗？\n\n提示：跳转后需要重新扫码才能返回点餐页面');
-  if (confirmed) window.open(url, '_blank');
+  _jumpUrl = url;
+  document.getElementById('jumpName').textContent = name;
+  document.getElementById('jumpAppName').textContent = name;
+  document.getElementById('jumpUrlBox').textContent = url;
+  document.getElementById('jumpOverlay').style.display = 'flex';
+  // 自动复制链接（静默失败，不弹错误）
+  navigator.clipboard.writeText(url).catch(function(){});
+}
+function copyJumpUrl() {
+  navigator.clipboard.writeText(_jumpUrl).then(function() {
+    var tip = document.getElementById('jumpCopiedTip');
+    tip.style.display = 'block';
+    setTimeout(function(){ tip.style.display = 'none'; }, 2500);
+  }).catch(function() {
+    prompt('请手动复制以下链接：', _jumpUrl);
+  });
+}
+function closeJumpModal() {
+  document.getElementById('jumpOverlay').style.display = 'none';
 }
 
 // 离开页面前提醒（顾客端：防止误关，无论购物车是否有东西）
@@ -1906,15 +2589,30 @@ function toggleDoneOrders() {
   if (_doneOrdersExpanded) renderDoneOrders();
 }
 
+// 解析订单时间字符串为毫秒时间戳（兼容多种格式）
+function parseOrderTime(timeStr) {
+  if (!timeStr) return 0;
+  var d = new Date(timeStr);
+  if (!isNaN(d.getTime())) return d.getTime();
+  // 兜底：尝试补全年份再解析
+  var withYear = new Date().getFullYear() + '/' + timeStr;
+  d = new Date(withYear);
+  return isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
 function renderAdminOrders() {
   const activeList = document.getElementById('adminOrderList');
   const doneCountEl = document.getElementById('doneOrdersCount');
   const doneDateStatsEl = document.getElementById('doneDateStats');
   if (!activeList) return;
 
-  // 分离进行中和已完成的订单（最新订单排在最前面）
+  // 分离进行中和已完成的订单（最新订单排在最前面，按真实时间戳倒序）
   const activeOrders = orders.filter(o => !['done','cancelled','rejected'].includes(o.status))
-    .sort(function(a, b) { return (b.time || '').localeCompare(a.time || ''); });
+    .sort(function(a, b) {
+      var ta = parseOrderTime(a.time);
+      var tb = parseOrderTime(b.time);
+      return tb - ta; // 降序：最新在前
+    });
   const doneOrders = orders.filter(o => ['done','cancelled','rejected'].includes(o.status))
 
   // 更新已完成数量（标题旁显示总数 + 今日完成数）
@@ -1944,14 +2642,10 @@ function renderAdminOrders() {
   if (activeStatsEl) {
     const pendingCount = activeOrders.filter(o => o.status === 'pending' || o.status === 'retry').length;
     const confirmedCount = activeOrders.filter(o => o.status === 'confirmed').length;
-    const readyCount = activeOrders.filter(o => o.status === 'ready').length;
-    const startedCount = activeOrders.filter(o => o.status === 'started').length;
-    const makingCount = activeOrders.filter(o => o.status === 'making' || o.status === 'new').length;
+    const makingCount = activeOrders.filter(o => o.status === 'making').length;
     let statsText = '';
     if (pendingCount > 0) statsText += `待确认${pendingCount} `;
     if (confirmedCount > 0) statsText += `已确认${confirmedCount} `;
-    if (readyCount > 0) statsText += `待制作${readyCount} `;
-    if (startedCount > 0) statsText += `已开制${startedCount} `;
     if (makingCount > 0) statsText += `制作中${makingCount}`;
     activeStatsEl.textContent = statsText;
   }
@@ -2066,8 +2760,12 @@ function renderDoneOrders() {
       📅 ${dateLabel}
       <span style="font-size:11px;font-weight:normal;color:#999;margin-left:6px;">(${info.count}单 · ¥${info.total.toFixed(2)})</span>
     </div>`;
-    // 该日订单（最新排在最前面）
-    html += info.list.sort(function(a, b) { return (b.time || '').localeCompare(a.time || ''); }).map(o => buildOrderCard(o)).join('');
+    // 该日订单（最新排在最前面，按真实时间戳倒序）
+    html += info.list.sort(function(a, b) {
+      var ta = parseOrderTime(a.time);
+      var tb = parseOrderTime(b.time);
+      return tb - ta;
+    }).map(o => buildOrderCard(o)).join('');
   });
   doneList.innerHTML = html;
 }
@@ -2157,26 +2855,18 @@ function buildOrderCard(o) {
   let statusClass = '', statusText = '';
   if (o.status === 'pending') { statusClass = 'status-pending'; statusText = '待确认收款'; }
   else if (o.status === 'retry') { statusClass = 'status-pending'; statusText = '↩️ 已打回重付'; }
-  else if (o.status === 'confirmed') { statusClass = 'status-confirmed'; statusText = '已确认收款'; }
-  else if (o.status === 'ready') { statusClass = 'status-ready'; statusText = '待制作'; }
-  else if (o.status === 'started') { statusClass = 'status-started'; statusText = '已开始制作'; }
-  else if (o.status === 'new') { statusClass = 'status-making'; statusText = '制作中'; }
   else if (o.status === 'making') { statusClass = 'status-making'; statusText = '制作中'; }
   else if (o.status === 'done') { statusClass = 'status-done'; statusText = '已完成'; }
   else if (o.status === 'cancelled') { statusClass = 'status-done'; statusText = '已取消'; }
   else if (o.status === 'rejected') { statusClass = 'status-done'; statusText = '已拒绝'; }
-  else { statusClass = 'status-done'; statusText = '已完成'; }
+  else { statusClass = 'status-done'; statusText = o.status; }
 
   let actions = '';
   if (o.status === 'pending') {
     actions = `<button class="btn-action btn-accept" onclick="event.stopPropagation();confirmPaymentReceived('${o.no}')">✅ 确认收款</button><button class="btn-action btn-retry" onclick="event.stopPropagation();retryOrder('${o.no}')" style="background:#fff3cd;color:#c62828;border:1px solid #c62828;">↩️ 打回重付</button><button class="btn-action btn-reject" onclick="event.stopPropagation();cancelOrder('${o.no}')">取消订单</button>`;
   } else if (o.status === 'confirmed') {
-    actions = `<button class="btn-action btn-accept" onclick="event.stopPropagation();startPreparing('${o.no}')">🍳 开始准备</button>`;
-  } else if (o.status === 'ready') {
     actions = `<button class="btn-action btn-accept" onclick="event.stopPropagation();startMaking('${o.no}')" style="background:#ff8f00;color:#fff;">▶️ 开始制作</button>`;
-  } else if (o.status === 'started') {
-    actions = `<button class="btn-action btn-accept" onclick="event.stopPropagation();markMaking('${o.no}')" style="background:#e65100;color:#fff;">🔥 制作中</button>`;
-  } else if (o.status === 'making' || o.status === 'new') {
+  } else if (o.status === 'making') {
     actions = `<button class="btn-action btn-done" onclick="event.stopPropagation();doneOrder('${o.no}')">✔ 已完成</button>`;
   } else if (o.status === 'done') {
     actions = `<span style="font-size:12px;color:green">✅ 已完成</span>`;
@@ -2359,6 +3049,56 @@ function loadMenuFromLocal() {
 const _urlApi = new URLSearchParams(window.location.search).get('api');
 const DEFAULT_API_BASE = 'https://qgys-backend-production.up.railway.app'; // Railway 后端地址
 let API_BASE = _urlApi || localStorage.getItem('qgys_api_base') || DEFAULT_API_BASE;
+
+// ===== 用户行为追踪 =====
+// 生成或获取匿名用户ID
+function getUserId() {
+  // 优先用手机号（实名），没有再用匿名ID
+  let phone = localStorage.getItem('qgys_user_phone');
+  if (phone) return 'p_' + phone;
+
+  let userId = localStorage.getItem('qgys_user_id');
+  if (!userId) {
+    userId = 'u_' + Date.now() + '_' + Math.random().toString(36).substr(2, 8);
+    localStorage.setItem('qgys_user_id', userId);
+  }
+  return userId;
+}
+
+// 获取当前手机号（用于追踪）
+function getUserPhone() {
+  return localStorage.getItem('qgys_user_phone') || '';
+}
+
+// 发送追踪事件到后端
+function trackEvent(eventType, eventData) {
+  try {
+    const phone = getUserPhone();
+    fetch(API_BASE + '/api/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        userId: getUserId(),
+        eventType: eventType,
+        eventData: eventData || {},
+        phone: phone  // 带上手机号（空字符串也可以，后端会处理）
+      })
+    }).catch(err => {}); // 静默失败，不影响用户体验
+  } catch(e) {}
+}
+
+// 页面加载时追踪
+window.addEventListener('load', function() {
+  trackEvent('page_view', { page: 'menu' });
+});
+
+// 页面可见性变化时也追踪（用户切回页面）
+document.addEventListener('visibilitychange', function() {
+  if (!document.hidden) {
+    trackEvent('page_return', { page: location.hash || 'menu' });
+  }
+});
+
 function getApiBase() {
   return API_BASE;
 }
@@ -2602,17 +3342,9 @@ function confirmPaymentReceived(no) {
   // 待确认收款 → 已确认收款
   updateOrderStatus(no, 'confirmed', '✅ 收款已确认，准备开始制作');
 }
-function startPreparing(no) {
-  // 已确认收款 → 待制作
-  updateOrderStatus(no, 'ready', '🍳 开始准备食材');
-}
 function startMaking(no) {
-  // 待制作 → 已开始制作
-  updateOrderStatus(no, 'started', '▶️ 已开始制作');
-}
-function markMaking(no) {
-  // 已开始制作 → 制作中
-  updateOrderStatus(no, 'making', '🔥 制作中');
+  // 待确认收款/已确认收款 → 制作中（合并"开始准备"+"开始制作"为一步）
+  updateOrderStatus(no, 'making', '🔥 已开始制作');
 }
 function doneOrder(no) {
   updateOrderStatus(no, 'done', '订单已完成！');
@@ -2672,9 +3404,7 @@ function updateAdminStats() {
   const pending = orders.filter(o => o.status === 'pending').length;
   const retry = orders.filter(o => o.status === 'retry').length;
   const confirmed = orders.filter(o => o.status === 'confirmed').length;
-  const ready = orders.filter(o => o.status === 'ready').length;
-  const started = orders.filter(o => o.status === 'started').length;
-  const making = orders.filter(o => o.status === 'making' || o.status === 'new').length;
+  const making = orders.filter(o => o.status === 'making').length;
   // 今日完成：只统计今天标记完成的订单
   const done = orders.filter(o => o.status === 'done' && o.doneDate === today).length;
 
@@ -2800,6 +3530,263 @@ function downloadQRCode() {
 
 // 页面加载时初始化二维码
 window.addEventListener('DOMContentLoaded', initQRCode);
+
+// ===== 数据统计页面 =====
+let _statsLoaded = false;
+let _funnelChart = null;
+let _trendChart = null;
+let _hotItemsChart = null;
+
+function loadStats() {
+  const startDate = document.getElementById('statsStartDate').value;
+  const endDate = document.getElementById('statsEndDate').value;
+
+  // 设置默认日期范围（最近7天）
+  if (!startDate) {
+    const end = new Date();
+    const start = new Date();
+    start.setDate(start.getDate() - 7);
+    document.getElementById('statsStartDate').value = start.toISOString().split('T')[0];
+    document.getElementById('statsEndDate').value = end.toISOString().split('T')[0];
+  }
+
+  const params = new URLSearchParams();
+  if (startDate) params.append('startDate', startDate);
+  if (endDate) params.append('endDate', endDate);
+
+  // 加载统计数据
+  fetch(API_BASE + '/api/analytics/detail?' + params.toString())
+    .then(res => res.json())
+    .then(data => {
+      renderStats(data);
+      _statsLoaded = true;
+    })
+    .catch(err => {
+      console.error('加载统计数据失败:', err);
+      showToast('加载统计数据失败');
+    });
+
+  // 加载今日概览
+  fetch(API_BASE + '/api/analytics')
+    .then(res => res.json())
+    .then(data => {
+      renderOverview(data);
+    })
+    .catch(err => {
+      console.error('加载概览数据失败:', err);
+    });
+}
+
+function renderOverview(data) {
+  // 今日访客
+  const uv = data.totalUsers || 0;
+  document.getElementById('statUV').textContent = uv;
+
+  // 加购转化率
+  const addToCartUsers = (data.events && data.events.add_to_cart) ? data.events.add_to_cart.users : 0;
+  const addRate = uv > 0 ? (addToCartUsers / uv * 100).toFixed(1) : 0;
+  document.getElementById('statAddRate').textContent = addRate + '%';
+  document.getElementById('statAddDetail').textContent = addToCartUsers + '/' + uv;
+
+  // 下单转化率
+  const orderUsers = (data.events && data.events.submit_order) ? data.events.submit_order.users : 0;
+  const orderRate = uv > 0 ? (orderUsers / uv * 100).toFixed(1) : 0;
+  document.getElementById('statOrderRate').textContent = orderRate + '%';
+  document.getElementById('statOrderDetail').textContent = orderUsers + '/' + uv;
+
+  // 复购率
+  const repeatUsers = data.repeatUsers || 0;
+  const repeatRate = uv > 0 ? (repeatUsers / uv * 100).toFixed(1) : 0;
+  document.getElementById('statRepeatRate').textContent = repeatRate + '%';
+  document.getElementById('statRepeatDetail').textContent = repeatUsers + '/' + uv;
+}
+
+function renderStats(data) {
+  // 渲染漏斗图
+  renderFunnelChart(data);
+
+  // 渲染趋势图
+  renderTrendChart(data);
+
+  // 渲染热门菜品图
+  renderHotItemsChart(data);
+
+  // 渲染每日数据表格
+  renderDailyStatsTable(data);
+}
+
+function renderFunnelChart(data) {
+  const ctx = document.getElementById('funnelChart').getContext('2d');
+
+  if (_funnelChart) _funnelChart.destroy();
+
+  const events = data.events || {};
+  const pageViewUsers = (events.page_view || {}).users || 0;
+  const addToCartUsers = (events.add_to_cart || {}).users || 0;
+  const submitOrderUsers = (events.submit_order || {}).users || 0;
+  const orderPaidUsers = (events.order_paid || {}).users || 0;
+
+  _funnelChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['页面浏览', '加购', '提交订单', '支付完成'],
+      datasets: [{
+        label: '用户数',
+        data: [pageViewUsers, addToCartUsers, submitOrderUsers, orderPaidUsers],
+        backgroundColor: [
+          'rgba(232, 68, 26, 0.7)',
+          'rgba(46, 125, 50, 0.7)',
+          'rgba(21, 101, 192, 0.7)',
+          'rgba(230, 81, 0, 0.7)'
+        ],
+        borderColor: [
+          'rgba(232, 68, 26, 1)',
+          'rgba(46, 125, 50, 1)',
+          'rgba(21, 101, 192, 1)',
+          'rgba(230, 81, 0, 1)'
+        ],
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderTrendChart(data) {
+  const ctx = document.getElementById('trendChart').getContext('2d');
+
+  if (_trendChart) _trendChart.destroy();
+
+  const dailyStats = data.dailyStats || [];
+  const dates = dailyStats.map(item => item.date);
+  const pageViewData = dailyStats.map(item => (item.page_view || {}).users || 0);
+  const orderData = dailyStats.map(item => (item.submit_order || {}).users || 0);
+
+  _trendChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [
+        {
+          label: '访客数',
+          data: pageViewData,
+          borderColor: 'rgba(232, 68, 26, 1)',
+          backgroundColor: 'rgba(232, 68, 26, 0.1)',
+          tension: 0.4
+        },
+        {
+          label: '下单用户',
+          data: orderData,
+          borderColor: 'rgba(21, 101, 192, 1)',
+          backgroundColor: 'rgba(21, 101, 192, 0.1)',
+          tension: 0.4
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'top' }
+      },
+      scales: {
+        y: { beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderHotItemsChart(data) {
+  const ctx = document.getElementById('hotItemsChart').getContext('2d');
+
+  if (_hotItemsChart) _hotItemsChart.destroy();
+
+  const hotItems = (data.hotItems || []).slice(0, 10);
+  const itemNames = hotItems.map(item => item.item_name || '未知');
+  const viewCounts = hotItems.map(item => item.view_count || 0);
+
+  _hotItemsChart = new Chart(ctx, {
+    type: 'horizontalBar',
+    data: {
+      labels: itemNames,
+      datasets: [{
+        label: '被加购次数',
+        data: viewCounts,
+        backgroundColor: 'rgba(232, 68, 26, 0.7)',
+        borderColor: 'rgba(232, 68, 26, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false }
+      },
+      scales: {
+        x: { beginAtZero: true }
+      }
+    }
+  });
+}
+
+function renderDailyStatsTable(data) {
+  const dailyStats = data.dailyStats || [];
+  let html = '<table style="width:100%;border-collapse:collapse;">';
+  html += '<tr style="background:#f5f5f5;font-weight:700;"><td style="padding:8px;border:1px solid #ddd;">日期</td><td style="padding:8px;border:1px solid #ddd;">页面浏览用户</td><td style="padding:8px;border:1px solid #ddd;">加购用户</td><td style="padding:8px;border:1px solid #ddd;">下单用户</td></tr>';
+
+  dailyStats.forEach(item => {
+    html += '<tr>';
+    html += '<td style="padding:8px;border:1px solid #ddd;">' + item.date + '</td>';
+    html += '<td style="padding:8px;border:1px solid #ddd;">' + ((item.page_view || {}).users || 0) + '</td>';
+    html += '<td style="padding:8px;border:1px solid #ddd;">' + ((item.add_to_cart || {}).users || 0) + '</td>';
+    html += '<td style="padding:8px;border:1px solid #ddd;">' + ((item.submit_order || {}).users || 0) + '</td>';
+    html += '</tr>';
+  });
+
+  html += '</table>';
+  document.getElementById('dailyStatsTable').innerHTML = html;
+}
+
+// 同步统计数据到飞书
+function syncStatsToFeishu() {
+  showToast('正在同步到飞书...');
+
+  fetch(API_BASE + '/api/analytics/sync-to-feishu', {
+    method: 'POST'
+  })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        showToast('✅ 已同步到飞书！');
+      } else {
+        showToast('❌ 同步失败：' + (data.error || '未知错误'));
+      }
+    })
+    .catch(err => {
+      console.error('同步到飞书失败:', err);
+      showToast('❌ 同步失败，请检查网络');
+    });
+}
+
+// 页面显示时加载统计数据
+const _origSwitchPage = switchPage;
+switchPage = function(page) {
+  _origSwitchPage(page);
+  if (page === 'stats' && !_statsLoaded) {
+    loadStats();
+  }
+};
+
 </script>
 
 <!-- ===== 后端设置弹窗 ===== -->
@@ -2822,6 +3809,105 @@ window.addEventListener('DOMContentLoaded', initQRCode);
     <button class="btn-add-item" onclick="saveApiSettings()" style="width:100%;">保存设置</button>
   </div>
 </div>
+
+  <!-- 外链跳转引导弹窗 -->
+  <div class="jump-overlay" id="jumpOverlay" style="display:none;">
+    <div class="jump-modal">
+      <div class="jump-icon">📱</div>
+      <div class="jump-title">⚠️ 微信限制提示</div>
+      <div class="jump-desc">
+        微信内置浏览器不支持直接跳转<span id="jumpName" style="color:#e8441a;font-weight:700;"></span>，<br>
+        请按以下步骤操作：
+      </div>
+      <div style="background:#f7f7f7;border-radius:10px;padding:12px 14px;font-size:13px;color:#444;line-height:1.7;margin-bottom:18px;text-align:left;">
+        <div>① 点击下方 <b>「复制链接</b> 按钮</div>
+        <div>② <b>退出微信</b>，打开手机浏览器</div>
+        <div>③ 在浏览器地址栏 <b>粘贴并打开</b></div>
+        <div>④ 浏览器将自动唤起<span id="jumpAppName" style="color:#e8441a;font-weight:700;"></span>App</div>
+      </div>
+      <div class="jump-url-box" id="jumpUrlBox"></div>
+      <div class="jump-btns">
+        <button class="jump-btn jump-btn-primary" onclick="copyJumpUrl()"><svg class="icon icon-clipboard"><use href="#icon-clipboard"/></svg> 复制链接</button>
+        <button class="jump-btn jump-btn-ghost" onclick="closeJumpModal()">我知道了</button>
+      </div>
+      <div class="jump-copied-tip" id="jumpCopiedTip">✅ 链接已复制！请在浏览器中粘贴打开</div>
+    </div>
+  </div>
+
+
+  <!-- ===== 数据统计页（已迁移到商家后台子标签，保留DOM防报错） ===== -->
+  <div class="page" id="page-stats" style="display:none;">
+    <div class="admin-page" id="statsPageContent">
+      <div class="admin-section-title">
+        <svg class="icon icon-gear" style="width:16px;height:16px;"><use href="#icon-gear"/></svg>
+        用户行为数据统计
+      </div>
+
+      <!-- 日期范围选择 -->
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:center;">
+        <label style="font-size:13px;color:#666;">起始日期：</label>
+        <input type="date" id="statsStartDate" style="padding:6px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+        <label style="font-size:13px;color:#666;">结束日期：</label>
+        <input type="date" id="statsEndDate" style="padding:6px 10px;border:1px solid #ddd;border-radius:8px;font-size:13px;">
+        <button onclick="loadStats()" style="padding:6px 16px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:13px;cursor:pointer;">查询</button>
+        <button onclick="syncStatsToFeishu()" style="padding:6px 16px;background:#fff;color:var(--primary);border:1px solid var(--primary);border-radius:8px;font-size:13px;cursor:pointer;">同步到飞书</button>
+      </div>
+
+      <!-- 核心指标卡片 -->
+      <div style="display:grid;grid-template-columns:repeat(2, 1fr);gap:10px;margin-bottom:20px;" id="statsCards">
+        <div style="background:linear-gradient(135deg, #e8441a, #ff6b3d);color:#fff;padding:16px;border-radius:14px;box-shadow:0 4px 12px rgba(232,68,26,0.3);">
+          <div style="font-size:12px;opacity:0.9;">今日访客</div>
+          <div style="font-size:28px;font-weight:800;margin:8px 0;" id="statUV">-</div>
+          <div style="font-size:11px;opacity:0.8;">独立用户数</div>
+        </div>
+        <div style="background:linear-gradient(135deg, #2e7d32, #4caf50);color:#fff;padding:16px;border-radius:14px;box-shadow:0 4px 12px rgba(46,125,50,0.3);">
+          <div style="font-size:12px;opacity:0.9;">加购转化率</div>
+          <div style="font-size:28px;font-weight:800;margin:8px 0;" id="statAddRate">-</div>
+          <div style="font-size:11px;opacity:0.8;" id="statAddDetail">加购/访客</div>
+        </div>
+        <div style="background:linear-gradient(135deg, #1565c0, #42a5f5);color:#fff;padding:16px;border-radius:14px;box-shadow:0 4px 12px rgba(21,101,192,0.3);">
+          <div style="font-size:12px;opacity:0.9;">下单转化率</div>
+          <div style="font-size:28px;font-weight:800;margin:8px 0;" id="statOrderRate">-</div>
+          <div style="font-size:11px;opacity:0.8;" id="statOrderDetail">下单/访客</div>
+        </div>
+        <div style="background:linear-gradient(135deg, #e65100, #ff9800);color:#fff;padding:16px;border-radius:14px;box-shadow:0 4px 12px rgba(230,81,0,0.3);">
+          <div style="font-size:12px;opacity:0.9;">复购率</div>
+          <div style="font-size:28px;font-weight:800;margin:8px 0;" id="statRepeatRate">-</div>
+          <div style="font-size:11px;opacity:0.8;" id="statRepeatDetail">复购用户/总用户</div>
+        </div>
+      </div>
+
+      <!-- 图表区域 -->
+      <div style="display:grid;grid-template-columns:1fr;gap:16px;margin-bottom:20px;">
+        <!-- 用户行为漏斗 -->
+        <div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">用户行为漏斗</div>
+          <canvas id="funnelChart" style="width:100%;height:200px;"></canvas>
+        </div>
+
+        <!-- 每日趋势 -->
+        <div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">每日趋势（最近7天）</div>
+          <canvas id="trendChart" style="width:100%;height:200px;"></canvas>
+        </div>
+
+        <!-- 热门菜品 -->
+        <div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">热门菜品 TOP 10</div>
+          <canvas id="hotItemsChart" style="width:100%;height:300px;"></canvas>
+        </div>
+      </div>
+
+      <!-- 原始数据表格 -->
+      <div style="background:#fff;border-radius:14px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,0.06);margin-bottom:20px;">
+        <div style="font-size:14px;font-weight:700;margin-bottom:12px;color:var(--text);">每日详细数据</div>
+        <div id="dailyStatsTable" style="font-size:13px;color:#666;">
+          加载中...
+        </div>
+      </div>
+
+    </div>
+  </div>
 
 </body>
 </html>

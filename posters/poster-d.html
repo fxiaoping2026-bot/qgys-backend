@@ -1,0 +1,425 @@
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=750, initial-scale=1">
+<title>海报D - 蒸汽现蒸风</title>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { width:750px; height:1200px; overflow:hidden; font-family:'PingFang SC','Microsoft YaHei',sans-serif; }
+
+  .poster-d {
+    width:750px; height:1200px;
+    background: linear-gradient(170deg, #fff8f0 0%, #ffefe5 25%, #ffffff 60%, #f5f9f7 100%);
+    position:relative; display:flex; flex-direction:column;
+    padding:28px 36px 20px; overflow:hidden;
+  }
+
+  /* 背景蒸汽纹理 */
+  .steam-bg {
+    position:absolute; top:0; left:0; width:100%; height:100%;
+    background:
+      radial-gradient(ellipse 300px 200px at 80% 15%, rgba(255,120,40,0.08) 0%, transparent 70%),
+      radial-gradient(ellipse 250px 180px at 10% 70%, rgba(230,245,235,0.6) 0%, transparent 65%);
+    pointer-events:none;
+  }
+
+  /* ===== 顶部品牌区（缩小版） ===== */
+  .brand-row {
+    display:flex; align-items:center; gap:12px;
+    margin-bottom:16px; position:relative; z-index:2;
+  }
+  /* 卡通头像占位 */
+  .brand-avatar {
+    width:68px; height:68px; border-radius:50%;
+    background:linear-gradient(145deg, #e8f4ea, #d4ead8);
+    display:flex; align-items:center; justify-content:center;
+    font-size:38px; flex-shrink:0;
+    box-shadow:0 3px 12px rgba(30,120,60,0.12);
+    border:2px solid rgba(30,120,60,0.1);
+  }
+  .brand-text { display:flex; flex-direction:column; }
+  .brand-name {
+    font-size:34px; font-weight:900; color:#1a3a2a;
+    letter-spacing:4px; line-height:1.1;
+  }
+  /* 已删除：红色小字"佛山家门口海鲜产地共享平台" */
+  .brand-tagline {
+    font-size:13px; color:#999; letter-spacing:1px; margin-top:2px;
+  }
+
+  /* 右上角slogan标签 */
+  .top-slogan {
+    margin-left:auto; display:flex; align-items:center; gap:6px;
+    background:linear-gradient(135deg,#fff5eb,#ffe8d5);
+    border-radius:20px; padding:6px 14px;
+    font-size:13px; font-weight:700; color:#c44a18;
+    border:1px solid rgba(196,74,24,0.12);
+  }
+
+  /* ===== 主视觉区：标题+鱼图 ===== */
+  .hero-section {
+    display:flex; align-items:flex-end; gap:0;
+    margin-bottom:14px; position:relative; z-index:2;
+  }
+  .hero-left {
+    flex:1; display:flex; flex-direction:column;
+    padding-bottom:8px;
+  }
+  .hero-title {
+    font-size:72px; font-weight:900; color:#e85a20;
+    line-height:1; letter-spacing:-2px;
+    text-shadow: 2px 2px 0 #ffd8b8, 4px 4px 0 rgba(232,90,32,0.1);
+  }
+  .hero-subtitle {
+    display:inline-block; background:#e85a20; color:#fff;
+    font-size:17px; font-weight:700; letter-spacing:3px;
+    padding:6px 18px; border-radius:6px;
+    margin-top:10px; align-self:flex-start;
+    box-shadow:0 3px 10px rgba(232,90,32,0.25);
+  }
+  .hero-right {
+    width:260px; height:180px; flex-shrink:0;
+    border-radius:16px; overflow:hidden;
+    position:relative;
+    box-shadow:0 6px 24px rgba(0,0,0,0.1);
+  }
+  .hero-right img {
+    width:100%; height:100%; object-fit:cover;
+  }
+  /* 鱼图上的蒸汽装饰 */
+  .hero-right::after {
+    content:''; position:absolute; top:-8px; right:10px;
+    width:40px; height:40px;
+    background:radial-gradient(circle, rgba(255,255,255,0.6) 0%, transparent 70%);
+    border-radius:50%; filter:blur(6px);
+  }
+
+  /* ===== 特色标签行 ===== */
+  .feature-tags {
+    display:flex; gap:10px; margin-bottom:16px; position:relative; z-index:2;
+    flex-wrap:wrap;
+  }
+  .feature-tag {
+    display:flex; align-items:center; gap:5px;
+    font-size:12px; color:#555; font-weight:600;
+    padding:5px 12px; border-radius:8px;
+    background:rgba(255,255,255,0.8);
+    border:1px solid rgba(0,0,0,0.06);
+  }
+  .feature-tag .tag-icon { font-size:16px; }
+  .feature-tag .tag-label { line-height:1.3; }
+
+  /* ===== 主内容三栏布局 ===== */
+  .main-content {
+    display:flex; gap:14px; flex:1; position:relative; z-index:2;
+    min-height:0;
+  }
+
+  /* 左栏：人气必点 */
+  .left-col {
+    width:180px; flex-shrink:0;
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .col-header {
+    font-size:15px; font-weight:800; color:#e85a20;
+    margin-bottom:4px; display:flex; align-items:center; gap:4px;
+  }
+  .menu-item {
+    display:flex; align-items:center; gap:8px;
+    background:#fff; border-radius:10px;
+    padding:8px 10px; border:1px solid #f0f0f0;
+    box-shadow:0 2px 6px rgba(0,0,0,0.03);
+  }
+  .menu-item-img {
+    width:42px; height:42px; border-radius:8px;
+    background:#f7f7f7; overflow:hidden; flex-shrink:0;
+  }
+  .menu-item-img img { width:100%; height:100%; object-fit:cover; }
+  .menu-item-info { flex:1; min-width:0; }
+  .menu-item-name { font-size:12px; font-weight:700; color:#333; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .menu-item-desc { font-size:10px; color:#999; margin-top:1px; }
+  .menu-tag {
+    font-size:9px; color:#e85a20; background:#fff3ed;
+    border-radius:4px; padding:1px 5px; display:inline-block; margin-top:2px;
+  }
+
+  /* 中栏：扫码区 */
+  .center-col {
+    flex:1; display:flex; flex-direction:column; align-items:center;
+    background:#fff; border-radius:16px;
+    padding:16px 12px; border:1.5px solid #f0ebe5;
+    box-shadow:0 4px 16px rgba(0,0,0,0.04);
+  }
+  .scan-header {
+    font-size:19px; font-weight:800; color:#e85a20;
+    letter-spacing:4px; margin-bottom:4px;
+  }
+  .scan-desc {
+    font-size:12px; color:#888; margin-bottom:10px;
+  }
+  .qr-box {
+    width:190px; height:190px; border-radius:12px;
+    border:2.5px solid #e85a20;
+    padding:6px; margin-bottom:8px;
+    box-shadow:0 4px 16px rgba(232,90,32,0.1);
+  }
+  .qr-box img { width:100%; height:100%; object-fit:contain; border-radius:8px; }
+  .scan-tools {
+    display:flex; gap:8px; margin-top:auto;
+  }
+  .scan-tool {
+    display:flex; align-items:center; gap:3px;
+    font-size:11px; color:#666; font-weight:600;
+  }
+  .scan-tool .st-icon { font-size:14px; }
+
+  /* 右栏：计时器+卖点 */
+  .right-col {
+    width:150px; flex-shrink:0;
+    display:flex; flex-direction:column; align-items:center;
+    gap:6px;
+  }
+  .timer-circle {
+    width:90px; height:90px; border-radius:50%;
+    border:4px solid #e85a20;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    background:#fffaf5; box-shadow:0 4px 16px rgba(232,90,32,0.1);
+  }
+  .timer-num { font-size:36px; font-weight:900; color:#e85a20; line-height:1; }
+  .timer-unit { font-size:13px; font-weight:700; color:#e85a20; }
+  .timer-title {
+    font-size:22px; font-weight:900; color:#e85a20; text-align:center;
+    line-height:1.2; margin-top:4px;
+  }
+  .timer-subtitle {
+    font-size:11px; color:#999; text-align:center; margin-top:2px;
+  }
+  .sell-point {
+    margin-top:auto; text-align:center;
+    font-size:13px; color:#666; font-weight:700; line-height:1.5;
+    padding:8px 10px; background:#f8faf8; border-radius:10px;
+    width:100%;
+  }
+
+  /* ===== 底部推荐区 ===== */
+  .bottom-section {
+    margin-top:14px; position:relative; z-index:2;
+  }
+  .rec-header {
+    display:flex; align-items:center; gap:8px;
+    margin-bottom:8px;
+  }
+  .rec-title { font-size:17px; font-weight:800; color:#e85a20; }
+  .rec-sub { font-size:12px; color:#999; }
+  .rec-grid {
+    display:flex; gap:10px;
+  }
+  .rec-card {
+    flex:1; background:#fff; border-radius:12px;
+    padding:10px 8px; text-align:center;
+    border:1px solid #f0f0f0;
+    box-shadow:0 2px 8px rgba(0,0,0,0.03);
+  }
+  .rec-card-img {
+    width:100%; height:72px; border-radius:8px;
+    background:#f5f5f5; overflow:hidden; margin-bottom:6px;
+  }
+  .rec-card-img img { width:100%; height:100%; object-fit:cover; }
+  .rec-card-name { font-size:13px; font-weight:700; color:#333; }
+  .rec-card-desc { font-size:10px; color:#aaa; margin-top:2px; }
+
+  /* ===== 底部地址条 ===== */
+  .footer-bar {
+    display:flex; align-items:center; justify-content:space-between;
+    margin-top:12px; padding-top:10px;
+    border-top:1px dashed #ddd;
+    position:relative; z-index:2;
+  }
+  .footer-addr {
+    display:flex; align-items:center; gap:6px;
+    font-size:12px; color:#888; font-weight:600;
+  }
+  .footer-tip {
+    font-size:12px; color:#bbb; font-style:italic;
+  }
+
+  /* 保存按钮 */
+  .save-btn {
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%);
+    background:linear-gradient(135deg,#e85a20,#ff7840);
+    color:#fff; font-size:18px; font-weight:700; letter-spacing:2px;
+    border:none; border-radius:40px; padding:14px 48px;
+    box-shadow:0 6px 24px rgba(232,90,32,0.35);
+    cursor:pointer; z-index:999;
+  }
+  .save-btn:active { transform:translateX(-50%) scale(0.96); }
+  .save-tip {
+    position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+    background:rgba(0,0,0,0.78); color:#fff; font-size:16px;
+    padding:14px 32px; border-radius:12px; z-index:1000; display:none;
+  }
+</style>
+</head>
+<body>
+<div class="poster-d">
+  <div class="steam-bg"></div>
+
+  <!-- 顶部品牌区（已缩小，删除了红色小字副标题） -->
+  <div class="brand-row">
+    <div class="brand-avatar">👨‍🌾</div>
+    <div class="brand-text">
+      <div class="brand-name">企港渔叔</div>
+    </div>
+    <div class="top-slogan">♨️ 活鲜现蒸 · 锁住鲜味</div>
+  </div>
+
+  <!-- 主视觉：6分钟现蒸 + 蒸鱼图 -->
+  <div class="hero-section">
+    <div class="hero-left">
+      <div class="hero-title">6分钟<br>现蒸</div>
+      <div class="hero-subtitle">现场现蒸 · 热气上桌</div>
+    </div>
+    <div class="hero-right">
+      <!-- 蒸鱼图片占位 -->
+      <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 260 180'%3E%3Crect fill='%23f0ebe5' width='260' height='180'/%3E%3Ctext x='130' y='90' text-anchor='middle' dominant-baseline='middle' fill='%23ccc' font-family='sans-serif' font-size='16'%3E清蒸鲈鱼%3C/text%3E%3C/svg%3E" alt="清蒸鲈鱼">
+    </div>
+  </div>
+
+  <!-- 四大特色 -->
+  <div class="feature-tags">
+    <div class="feature-tag"><span class="tag-icon">🎣</span><span class="tag-label">鲜活现捞<br>当天到店</span></div>
+    <div class="feature-tag"><span class="tag-icon">♨️</span><span class="tag-label">现蒸现做<br>6分钟出锅</span></div>
+    <div class="feature-tag"><span class="tag-icon">🛍️</span><span class="tag-label">社区自提<br>无需排队</span></div>
+    <div class="feature-tag"><span class="tag-icon">🌿</span><span class="tag-label">少油少盐<br>健康美味</span></div>
+  </div>
+
+  <!-- 三栏主内容 -->
+  <div class="main-content">
+
+    <!-- 左栏：人气必点 -->
+    <div class="left-col">
+      <div class="col-header">🔥 人气必点</div>
+      <div class="menu-item">
+        <div class="menu-item-img"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 42 42'%3E%3Crect fill='%23fef3ee' rx='8' width='42' height='42'/%3E%3Ctext x='21' y='26' text-anchor='middle' fill='%23e85a20' font-size='20'%3E🐟%3C/text%3E%3C/svg%3E"></div>
+        <div class="menu-item-info">
+          <div class="menu-item-name">清蒸鲈鱼</div>
+          <div class="menu-item-desc">6分钟出锅</div>
+          <div class="menu-tag">招牌</div>
+        </div>
+      </div>
+      <div class="menu-item">
+        <div class="menu-item-img"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 42 42'%3E%3Crect fill='%23fef9ef' rx='8' width='42' height='42'/%3E%3Ctext x='21' y='26' text-anchor='middle' fill='%23d4941a' font-size='20'%3E🦪%3C/text%3E%3C/svg%3E"></div>
+        <div class="menu-item-info">
+          <div class="menu-item-name">蒜蓉生蚝</div>
+          <div class="menu-item-desc">6分钟出锅</div>
+          <div class="menu-tag">热销</div>
+        </div>
+      </div>
+      <div class="menu-item">
+        <div class="menu-item-img"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 42 42'%3E%3Crect fill='%23f5f0eb' rx='8' width='42' height='42'/%3E%3Ctext x='21' y='26' text-anchor='middle' fill='%23c47a3a' font-size='20'%3E🦪%3C/text%3E%3C/svg%3E"></div>
+        <div class="menu-item-info">
+          <div class="menu-item-name">蒜蓉粉丝扇贝</div>
+          <div class="menu-item-desc">6分钟出锅</div>
+        </div>
+      </div>
+      <div class="menu-item">
+        <div class="menu-item-img"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 42 42'%3E%3Crect fill='%23fef5f0' rx='8' width='42' height='42'/%3E%3Ctext x='21' y='26' text-anchor='middle' fill='#e87a3a' font-size='20'%3E🦐%3C/text%3E%3C/svg%3E"></div>
+        <div class="menu-item-info">
+          <div class="menu-item-name">白灼基围虾</div>
+          <div class="menu-item-desc">5分钟出锅</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 中栏：扫码点餐 -->
+    <div class="center-col">
+      <div class="scan-header">// 扫码点餐 //</div>
+      <div class="scan-desc">长按识别二维码，立即下单</div>
+      <div class="qr-box">
+        <img src="qrcode.png" alt="点餐二维码">
+      </div>
+      <div class="scan-tools">
+        <div class="scan-tool"><span class="st-icon">📱</span> 手机点餐</div>
+        <div class="scan-tool"><span class="st-icon">✅</span> 提前下单</div>
+        <div class="scan-tool"><span class="st-icon">♨️</span> 热气出餐</div>
+      </div>
+    </div>
+
+    <!-- 右栏：计时器+卖点 -->
+    <div class="right-col">
+      <div class="timer-circle">
+        <div class="timer-num">6</div>
+        <div class="timer-unit">min</div>
+      </div>
+      <div class="timer-title">6分钟<br>快速出锅</div>
+      <div class="timer-subtitle">从生到熟</div>
+      <div class="sell-point">蒸汽锁鲜<br>原汁原味</div>
+    </div>
+  </div>
+
+  <!-- 底部推荐 -->
+  <div class="bottom-section">
+    <div class="rec-header">
+      <div class="rec-title">🔥 今日现蒸推荐</div>
+      <div class="rec-sub">鲜活食材，每日更新！</div>
+    </div>
+    <div class="rec-grid">
+      <div class="rec-card">
+        <div class="rec-card-img"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 72'%3E%3Crect fill='%23fef3ee' rx='8' width='120' height='72'/%3E%3Ctext x='60' y='40' text-anchor='middle' fill='%23e85a20' font-size='28'%3E🦐%3C/text%3E%3C/svg%3E"></div>
+        <div class="rec-card-name">基围虾</div>
+        <div class="rec-card-desc">清蒸·原汁原味</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-card-img"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 72'%3E%3Crect fill='%23f5f0eb' rx='8' width='120' height='72'/%3E%3Ctext x='60' y='40' text-anchor='middle' fill='%23b06a2a' font-size='28'%3E🦪%3C/text%3E%3C/svg%3E"></div>
+        <div class="rec-card-name">花螺</div>
+        <div class="rec-card-desc">清蒸·鲜香弹牙</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-card-img"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 72'%3E%3Crect fill='%23fef5f0' rx='8' width='120' height='72'/%3E%3Ctext x='60' y='40' text-anchor='middle' fill='%23a05828' font-size='28'%3E🦪%3C/text%3E%3C/svg%3E"></div>
+        <div class="rec-card-name">花甲</div>
+        <div class="rec-card-desc">清蒸·鲜美多汁</div>
+      </div>
+      <div class="rec-card">
+        <div class="rec-card-img"><img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 72'%3E%3Crect fill='%23fef0eb' rx='8' width='120' height='72'/%3E%3Ctext x='60' y='40' text-anchor='middle' fill='%23e88a4a' font-size='28'%3E🐟%3C/text%3E%3C/svg%3E"></div>
+        <div class="rec-card-name">清蒸鲈鱼</div>
+        <div class="rec-card-desc">清蒸·鲜嫩入味</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 地址栏 -->
+  <div class="footer-bar">
+    <div class="footer-addr">📍 佛山市禅城区水悦龙湾</div>
+    <div class="footer-tip">社区门口 · 现点现蒸 · 新鲜看得见</div>
+  </div>
+</div>
+
+<button class="save-btn" id="saveBtnD" onclick="saveAsImageD()">📥 保存为图片</button>
+<div class="save-tip" id="saveTipD">正在生成图片，请稍候…</div>
+
+<script>
+function saveAsImageD() {
+  var tip = document.getElementById('saveTipD');
+  tip.style.display = 'block';
+  document.getElementById('saveBtnD').style.display = 'none';
+  setTimeout(function() {
+    html2canvas(document.querySelector('.poster-d'), {
+      width:750, height:1200, scale:2,
+      backgroundColor:null, useCORS:true, logging:false
+    }).then(function(canvas) {
+      tip.style.display = 'none';
+      var link = document.createElement('a');
+      link.download = '企港渔叔-点餐海报-蒸汽现蒸风.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+      document.getElementById('saveBtnD').style.display = 'block';
+    }).catch(function() {
+      tip.innerText = '❌ 生成失败，请截图保存';
+      setTimeout(function(){ tip.style.display='none'; document.getElementById('saveBtnD').style.display='block'; }, 2000);
+    });
+  }, 100);
+}
+</script>
+</body>
+</html>

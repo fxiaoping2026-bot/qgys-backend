@@ -3,11 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<!-- 防缓存：强制每次加载最新版本 -->
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<meta http-equiv="Pragma" content="no-cache">
-<meta http-equiv="Expires" content="0">
-<title>企港渔叔社区海鲜厨房 - 扫码点餐 v4</title>
+<title>企港渔叔社区海鲜厨房 - 扫码点餐</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   :root {
@@ -443,7 +439,6 @@
     font-size: 12px; padding: 3px 10px; border-radius: 20px; font-weight: 600;
   }
   .status-pending { background: #ffe5b4; color: #a0522d; }
-  .status-accepted { background: #d4edda; color: #155724; }
   .status-confirmed { background: #e7f3ff; color: #004085; }
   .status-ready { background: #fff8e1; color: #e65100; }
   .status-started { background: #fff3e0; color: #bf360c; }
@@ -630,46 +625,6 @@
   .admin-section-title .icon { width: 16px; height: 16px; }
   @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
   @keyframes modalSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
-
-  /* ===== 订单状态页 ===== */
-  .order-status-page { display: none; padding: 20px 16px; max-width: 420px; margin: 0 auto; }
-  .order-status-page.show { display: block; }
-  .status-header { text-align: center; padding-bottom: 16px; border-bottom: 1px solid #f0f0f0; margin-bottom: 20px; }
-  .status-label { font-size: 12px; color: #999; margin-bottom: 4px; }
-  .status-order-no { font-size: 15px; font-weight: 600; color: #333; }
-  .status-amount { font-size: 28px; font-weight: 800; color: var(--primary); margin-top: 10px; }
-  .status-progress { background: #fff; border-radius: 16px; padding: 24px 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); margin-bottom: 18px; }
-  .progress-title { font-size: 16px; font-weight: 700; color: #333; margin-bottom: 16px; text-align: center; }
-  .progress-step { display: flex; align-items: center; margin-bottom: 16px; }
-  .progress-step:last-child { margin-bottom: 0; }
-  .step-icon { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; margin-right: 12px; flex-shrink: 0; }
-  .step-icon.pending { background: #ccc; color: #fff; }
-  .step-icon.active { background: #f5a623; color: #fff; }
-  .step-icon.done { background: #07c160; color: #fff; }
-  .step-info { flex: 1; }
-  .step-name { font-size: 15px; font-weight: 600; color: #333; }
-  .step-name.done { color: #999; }
-  .step-time { font-size: 12px; color: #999; margin-top: 2px; }
-  .status-footer { text-align: center; padding: 0 16px; }
-  .status-tips { background: #fafafa; border-radius: 8px; padding: 10px 14px; text-align: left; font-size: 12px; color: #888; line-height: 1.9; margin-bottom: 16px; }
-  .btn-contact { padding: 10px 28px; font-size: 14px; font-weight: 600; background: var(--primary); color: #fff; border: none; border-radius: 8px; cursor: pointer; }
-
-  /* ===== 商家管理页 ===== */
-  .admin-page { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #f5f5f5; z-index: 1000; overflow-y: auto; padding: 16px; }
-  .admin-page.show { display: block; }
-  .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-  .admin-header h2 { font-size: 18px; font-weight: 700; color: #333; }
-  .admin-tips { font-size: 13px; color: #999; margin-bottom: 12px; }
-  .admin-order-list { display: flex; flex-direction: column; gap: 12px; }
-  .admin-order-item { background: #fff; border-radius: 12px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
-  .admin-order-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .admin-order-no { font-size: 14px; font-weight: 600; color: #333; }
-  .admin-order-amount { font-size: 16px; font-weight: 700; color: var(--primary); }
-  .admin-order-status { font-size: 12px; color: #999; margin-bottom: 8px; }
-  .admin-order-actions { display: flex; gap: 8px; }
-  .admin-btn-start { flex: 1; padding: 8px 16px; font-size: 14px; font-weight: 600; background: #f5a623; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
-  .admin-btn-done { flex: 1; padding: 8px 16px; font-size: 14px; font-weight: 600; background: #07c160; color: #fff; border: none; border-radius: 8px; cursor: pointer; }
-  .admin-btn-disabled { flex: 1; padding: 8px 16px; font-size: 14px; font-weight: 600; background: #ccc; color: #fff; border: none; border-radius: 8px; cursor: not-allowed; }
 </style>
 
 <!-- SVG 图标库 -->
@@ -1355,7 +1310,7 @@ switchPage = function(page) {
 <div class="modal-overlay" id="checkoutModal" style="position:fixed;">
   <div class="modal-sheet" style="position:relative;">
     <button class="modal-close" onclick="closeCheckout()">✕</button>
-    <h3>确认订单 <small style="font-size:11px;color:#ccc;font-weight:normal;">v3</small></h3>
+    <h3>确认订单</h3>
     <div class="order-summary" id="orderSummary"></div>
     <div class="form-group">
       <label>联系方式（取餐时通知您）</label>
@@ -1394,8 +1349,6 @@ switchPage = function(page) {
   ">
     <!-- 跳转支付区域 -->
     <div id="payRedirectArea">
-      <!-- 版本调试信息 -->
-      <div id="payDebugInfo" style="font-size:11px;color:#ccc;text-align:center;margin-bottom:8px;">v20260623-2048</div>
       <!-- 状态1：等待跳转（默认） -->
       <div id="redirectReady" style="display:none;">
         <div style="font-size:40px;margin-bottom:12px;">💰</div>
@@ -1472,58 +1425,6 @@ switchPage = function(page) {
   </div>
 
   <button style="background:none;border:1px solid #ddd;color:#999;font-size:13px;margin-top:14px;padding:8px 24px;border-radius:20px;cursor:pointer;" onclick="cancelPay()">取消订单</button>
-</div>
-
-<!-- ===== 商家管理页 ===== -->
-<div class="admin-page" id="adminPage">
-  <div class="admin-header">
-    <h2>📋 订单管理</h2>
-    <button onclick="closeAdminPage()" style="background:none;border:none;font-size:20px;cursor:pointer;">✕</button>
-  </div>
-  <div class="admin-tips" id="adminTips">正在加载订单...</div>
-  <div class="admin-order-list" id="adminOrderList"></div>
-</div>
-
-<!-- ===== 订单状态页 ===== -->
-<div class="order-status-page" id="orderStatusPage">
-  <div class="status-header">
-    <div class="status-label">订单编号</div>
-    <div class="status-order-no" id="statusOrderNo"></div>
-    <div class="status-amount" id="statusAmount">¥0.00</div>
-  </div>
-
-  <div class="status-progress">
-    <div class="progress-title">订单状态</div>
-    
-    <div class="progress-step" id="stepAccepted">
-      <div class="step-icon" id="stepAcceptedIcon">✅</div>
-      <div class="step-info">
-        <div class="step-name">商家已接单</div>
-        <div class="step-time" id="stepAcceptedTime"></div>
-      </div>
-    </div>
-    
-    <div class="progress-step" id="stepCooking">
-      <div class="step-icon pending" id="stepCookingIcon">🍳</div>
-      <div class="step-info">
-        <div class="step-name">正在制作中...</div>
-        <div class="step-time" id="stepCookingTime"></div>
-      </div>
-    </div>
-    
-    <div class="progress-step" id="stepDone">
-      <div class="step-icon pending" id="stepDoneIcon">⏳</div>
-      <div class="step-info">
-        <div class="step-name" id="stepDoneText">制作完成</div>
-        <div class="step-time" id="stepDoneTime"></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="status-footer">
-    <div class="status-tips" id="statusTips">预计等待：15-20分钟</div>
-    <button class="btn-contact" onclick="contactShop()">联系商家</button>
-  </div>
 </div>
 
 <!-- ===== 成功页 ===== -->
@@ -1609,309 +1510,6 @@ switchPage = function(page) {
 <div class="toast" id="toast"></div>
 
 <script>
-// ===== 【v4】支付核心函数 —— 放在最前面确保全局可用 =====
-let _currentPayOrder = { total: 0, orderNo: '', clientSn: '', payUrl: '' };
-
-async function generateDynamicQr(totalAmount, clientSn) {
-  _currentPayOrder = { total: totalAmount, orderNo: clientSn, clientSn: clientSn };
-  showPayState('loading');
-
-  const verEl = document.getElementById('payDebugInfo');
-  if (verEl) verEl.textContent = 'v4-active | ' + new Date().toLocaleTimeString();
-  console.log('[PAY v4] 开始生成付款链接...', { totalAmount, clientSn, API_BASE });
-
-  // 构造 return_url（付款后自动跳回订单状态页）
-  const returnUrl = window.location.origin + '?orderNo=' + encodeURIComponent(clientSn) + '&total=' + encodeURIComponent(totalAmount) + '&show=status';
-
-  try {
-    // 方案1：GET请求（避免CORS预检）
-    const getUrl = API_BASE + '/api/shoukuanba/wap-pay-url'
-      + '?totalAmount=' + encodeURIComponent(totalAmount)
-      + '&clientSn=' + encodeURIComponent(clientSn)
-      + '&returnUrl=' + encodeURIComponent(returnUrl)
-      + '&t=' + Date.now();
-
-    console.log('[PAY v4] GET:', getUrl);
-
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
-
-    const res = await fetch(getUrl, {
-      method: 'GET',
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-
-    console.log('[PAY v4] HTTP:', res.status);
-    const data = await res.json();
-    console.log('[PAY v4] 响应:', JSON.stringify(data));
-
-    if (data.success && data.payUrl) {
-      _currentPayOrder.payUrl = data.payUrl;
-      showPayState('ready', data.payUrl);
-      setTimeout(() => { window.location.href = data.payUrl; }, 500);
-      return;
-    }
-    throw new Error(data.error || JSON.stringify(data));
-  } catch (err) {
-    console.error('[PAY v4] 失败:', err.message);
-    try {
-      // 方案2：POST兜底
-      const c2 = new AbortController();
-      const t2 = setTimeout(() => c2.abort(), 10000);
-      const r2 = await fetch(API_BASE + '/api/shoukuanba/wap-pay-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ totalAmount, clientSn }),
-        signal: c2.signal,
-      });
-      clearTimeout(t2);
-      const d2 = await r2.json();
-      if (d2.success && d2.payUrl) {
-        _currentPayOrder.payUrl = d2.payUrl;
-        showPayState('ready', d2.payUrl);
-        setTimeout(() => { window.location.href = d2.payUrl; }, 500);
-        return;
-      }
-      throw new Error(d2.error || 'POST也失败');
-    } catch (e2) {
-      console.error('[PAY v4] 全部失败:', e2.message);
-      showPayState('error', e2.name === 'AbortError' ? '⏰ 网络超时，请重试' : e2.message);
-    }
-  }
-}
-
-// ===== 订单状态页相关函数 =====
-let _statusPollTimer = null;
-
-function showOrderStatusPage(orderNo, total) {
-  // 隐藏其他页面
-  document.querySelectorAll('.page, .pay-page, .success-page').forEach(p => p.classList.remove('show'));
-  const statusPage = document.getElementById('orderStatusPage');
-  if (statusPage) statusPage.classList.add('show');
-  
-  // 填充订单信息
-  const noEl = document.getElementById('statusOrderNo');
-  if (noEl) noEl.textContent = orderNo;
-  const amountEl = document.getElementById('statusAmount');
-  if (amountEl) amountEl.textContent = '¥' + (total || 0).toFixed(2);
-  
-  // 初始化状态UI（默认：已接单）
-  updateStatusUI('accepted');
-  
-  // 开始轮询订单状态
-  pollOrderStatus(orderNo);
-}
-
-async function pollOrderStatus(orderNo) {
-  // 清除旧定时器
-  if (_statusPollTimer) clearInterval(_statusPollTimer);
-  
-  // 立即查询一次
-  await fetchOrderStatus(orderNo);
-  
-  // 每5秒轮询一次
-  _statusPollTimer = setInterval(() => {
-    fetchOrderStatus(orderNo);
-  }, 5000);
-}
-
-async function fetchOrderStatus(orderNo) {
-  try {
-    const res = await fetch(API_BASE + '/api/orders/' + encodeURIComponent(orderNo) + '/status');
-    const data = await res.json();
-    if (data.success) {
-      updateStatusUI(data.status);
-    }
-  } catch (err) {
-    console.error('[订单状态] 轮询失败:', err.message);
-  }
-}
-
-function updateStatusUI(status) {
-  // 步骤1：商家已接单（accepted）
-  const stepAcceptedIcon = document.getElementById('stepAcceptedIcon');
-  const stepAcceptedTime = document.getElementById('stepAcceptedTime');
-  if (stepAcceptedIcon) {
-    stepAcceptedIcon.className = 'step-icon done';
-    stepAcceptedIcon.textContent = '✅';
-  }
-  if (stepAcceptedTime && !stepAcceptedTime.textContent) {
-    stepAcceptedTime.textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-  }
-  
-  // 步骤2：制作中（cooking）
-  const stepCookingIcon = document.getElementById('stepCookingIcon');
-  if (status === 'cooking' || status === 'done') {
-    if (stepCookingIcon) {
-      stepCookingIcon.className = 'step-icon ' + (status === 'done' ? 'done' : 'active');
-      stepCookingIcon.textContent = status === 'done' ? '✅' : '🍳';
-    }
-    const stepCookingTime = document.getElementById('stepCookingTime');
-    if (stepCookingTime && !stepCookingTime.textContent) {
-      stepCookingTime.textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    }
-  }
-    
-  // 步骤3：制作完成（done）
-  const stepDoneIcon = document.getElementById('stepDoneIcon');
-  const stepDoneTime = document.getElementById('stepDoneTime');
-  const stepDoneText = document.getElementById('stepDoneText');
-  if (status === 'done') {
-    if (stepDoneIcon) {
-      stepDoneIcon.className = 'step-icon done';
-      stepDoneIcon.textContent = '✅';
-    }
-    if (stepDoneText) {
-      stepDoneText.textContent = '制作完成，请到店取餐';
-      stepDoneText.className = 'step-name done';
-    }
-    if (stepDoneTime && !stepDoneTime.textContent) {
-      stepDoneTime.textContent = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' });
-    }
-      
-    // 停止轮询
-    if (_statusPollTimer) {
-      clearInterval(_statusPollTimer);
-      _statusPollTimer = null;
-    }
-      
-    // 更新提示
-    const tipsEl = document.getElementById('statusTips');
-    if (tipsEl) tipsEl.textContent = '✅ 制作完成，请到店取餐！';
-  }
-}
-
-// ===== 商家管理页相关函数 =====
-let _adminVerified = false;
-
-function showAdminPage() {
-  if (_adminVerified) {
-    loadAdminOrders();
-    return;
-  }
-  const pwd = prompt('请输入管理密码：');
-  if (pwd === 'qgys2026') {
-    _adminVerified = true;
-    loadAdminOrders();
-  } else if (pwd !== null) {
-    alert('密码错误！');
-  }
-}
-
-async function loadAdminOrders() {
-  const page = document.getElementById('adminPage');
-  const tips = document.getElementById('adminTips');
-  const list = document.getElementById('adminOrderList');
-  if (page) page.classList.add('show');
-  if (tips) tips.textContent = '正在加载订单...';
-  
-  try {
-    const res = await fetch(API_BASE + '/api/orders/all');
-    const data = await res.json();
-    if (data.success) {
-      const activeOrders = data.orders.filter(o => ['accepted', 'cooking'].includes(o.status));
-      if (activeOrders.length === 0) {
-        if (tips) tips.textContent = '暂无进行中的订单';
-        if (list) list.innerHTML = '';
-      } else {
-        if (tips) tips.textContent = '共 ' + activeOrders.length + ' 个进行中订单';
-        renderAdminOrderList(activeOrders);
-      }
-    }
-  } catch (err) {
-    if (tips) tips.textContent = '加载失败：' + err.message;
-  }
-}
-
-function renderAdminOrderList(orders) {
-  const list = document.getElementById('adminOrderList');
-  if (!list) return;
-  
-  list.innerHTML = orders.map(o => {
-    const statusText = { 'accepted': '已接单', 'cooking': '制作中' }[o.status] || o.status;
-    const actions = o.status === 'accepted' 
-      ? `<button class="admin-btn-start" onclick="updateAdminOrderStatus('${o.no}', 'cooking')">开始制作</button>`
-      : o.status === 'cooking'
-        ? `<button class="admin-btn-done" onclick="updateAdminOrderStatus('${o.no}', 'done')">制作完成</button>`
-        : `<button class="admin-btn-disabled" disabled>已完成</button>`;
-    
-    return `
-      <div class="admin-order-item">
-        <div class="admin-order-header">
-          <span class="admin-order-no">${o.no}</span>
-          <span class="admin-order-amount">¥${o.total.toFixed(2)}</span>
-        </div>
-        <div class="admin-order-status">状态：${statusText}</div>
-        <div class="admin-order-actions">${actions}</div>
-      </div>
-    `;
-  }).join('');
-}
-
-async function updateAdminOrderStatus(orderNo, status) {
-  try {
-    const res = await fetch(API_BASE + '/api/orders/' + encodeURIComponent(orderNo), {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: status })
-    });
-    const data = await res.json();
-    if (data.success) {
-      alert('状态更新成功！');
-      loadAdminOrders();
-    } else {
-      alert('更新失败：' + data.error);
-    }
-  } catch (err) {
-    alert('更新失败：' + err.message);
-  }
-}
-
-function closeAdminPage() {
-  const page = document.getElementById('adminPage');
-  if (page) page.classList.remove('show');
-}
-
-function contactShop() {
-  // 跳转到商家电话
-  const shopPhone = '13800138000';  // 替换为平哥的实际电话
-  window.location.href = 'tel:' + shopPhone;
-}
-
-// 页面销毁时清除定时器
-window.addEventListener('beforeunload', () => {
-  if (_statusPollTimer) clearInterval(_statusPollTimer);
-});
-
-function showPayState(state, extra) {
-  var ready   = document.getElementById('redirectReady');
-  var loading = document.getElementById('redirectLoading');
-  var error   = document.getElementById('redirectError');
-  var icons   = document.getElementById('payMethodIcons');
-  var tips    = document.getElementById('payStepTips');
-  if (ready) ready.style.display = 'none';
-  if (loading) loading.style.display = 'none';
-  if (error) error.style.display = 'none';
-  if (icons) icons.style.display = 'none';
-  if (tips) tips.style.display = 'none';
-  switch(state) {
-    case 'loading': if (loading) loading.style.display = ''; break;
-    case 'ready':
-      if (extra && ready) { _currentPayOrder.payUrl = extra; var b=ready.querySelector('button'); if(b) b.textContent='✅ 去收钱吧付款'; }
-      if (ready) ready.style.display='';
-      if (icons) icons.style.display='';
-      if (tips) { tips.innerHTML='<span style="color:#f5a623;font-weight:600;">💡 如未自动跳转请点按钮</span>'; tips.style.display=''; }
-      break;
-    case 'error':
-      if (error) { error.style.display=''; var m=document.getElementById('redirectErrorMsg'); if(m&&extra) m.textContent='⚠️ '+extra; }
-      if (icons) icons.style.display='';
-      break;
-  }
-}
-
-console.log('[v4] ✅ generateDynamicQr 已加载');
-
 // ===== 菜单数据（企港渔叔社区海鲜厨房·完整菜单）=====
 let menuData = [
   {
@@ -2324,16 +1922,11 @@ function selectPay(method) {
 }
 
 function submitOrder() {
-  // 立即给按钮反馈（防止用户重复点击）
-  const btn = document.querySelector('.btn-submit-order');
-  if (btn) { btn.textContent = '⏳ 处理中...'; btn.style.opacity = '0.7'; }
-
-  try {
   // 换购品门槛检查：移除不满足门槛的换购品
   enforcePromoRules();
   const phone = document.getElementById('inputPhone').value.trim();
-  if (!phone) { showToast('请填写联系方式'); resetSubmitBtn(); return; }
-  if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('手机号格式不对哦'); resetSubmitBtn(); return; }
+  if (!phone) { showToast('请填写联系方式'); return; }
+  if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('手机号格式不对哦'); return; }
   const entries = Object.entries(cart);
   const items = entries.map(([id, qty]) => {
     const item = findItem(id);
@@ -2349,7 +1942,7 @@ function submitOrder() {
     no: orderNo,
     items: items,
     total: total,
-    status: 'accepted',  // 付款后默认已接单（商家无需确认收款）
+    status: 'pending',  // 待商家确认收款（确认后直接制作，无接单环节）
     time: new Date().toLocaleString('zh-CN'),
     phone: phone,
     remark: remark
@@ -2407,29 +2000,17 @@ function submitOrder() {
 
   // 生成动态收款码（收钱吧预下单）
   generateDynamicQr(total, orderNo);
-
-  } catch(err) {
-    console.error('[submitOrder] 异常:', err);
-    alert('下单异常: ' + err.message + '\n\n请截图联系商家');
-    resetSubmitBtn();
-  }
-}
-
-/** 重置提交按钮状态 */
-function resetSubmitBtn() {
-  const btn = document.querySelector('.btn-submit-order');
-  if (btn) { btn.textContent = '立即下单'; btn.style.opacity = '1'; }
 }
 
 function confirmPayment() {
   // 停止离开检测
   stopPayPageWatch();
 
-  // 用户点了"我已完成付款" → 订单状态改为"已接单"（默认接单，无需确认收款）
+  // 用户点了"我已完成付款" → 订单状态改为"待确认收款"
   const orderNo = document.getElementById('payOrderNo').textContent;
   const o = orders.find(o => o.no === orderNo);
   if (o) {
-    o.status = 'accepted';  // 已接单
+    o.status = 'pending';  // 待商家确认收款
     saveOrdersToLocal();
     // 整条订单推给后台（此时才第一次同步，确保用户已确认付款）
     syncOrderToAPI(o);
@@ -2648,7 +2229,7 @@ function _onUserReturnedFromPay() {
   // 如果订单已经确认过，不再弹窗
   const orderNo = document.getElementById('payOrderNo').textContent;
   const o = orders.find(o => o.no === orderNo);
-  if (o && (o.status === 'accepted' || o.status === 'cooking' || o.status === 'done')) {
+  if (o && (o.status === 'pending' || o.status === 'making' || o.status === 'done')) {
     return; // 订单已有最终结果，不弹窗
   }
 
@@ -3105,11 +2686,13 @@ function renderAdminOrders() {
     activeCountEl.textContent = activeOrders.length > 0 ? `(${activeOrders.length}条)` : '';
   }
   if (activeStatsEl) {
-    const acceptedCount = activeOrders.filter(o => o.status === 'accepted').length;
-    const cookingCount = activeOrders.filter(o => o.status === 'cooking').length;
+    const pendingCount = activeOrders.filter(o => o.status === 'pending' || o.status === 'retry').length;
+    const confirmedCount = activeOrders.filter(o => o.status === 'confirmed').length;
+    const makingCount = activeOrders.filter(o => o.status === 'making').length;
     let statsText = '';
-    if (acceptedCount > 0) statsText += `已接单${acceptedCount} `;
-    if (cookingCount > 0) statsText += `制作中${cookingCount}`;
+    if (pendingCount > 0) statsText += `待确认${pendingCount} `;
+    if (confirmedCount > 0) statsText += `已确认${confirmedCount} `;
+    if (makingCount > 0) statsText += `制作中${makingCount}`;
     activeStatsEl.textContent = statsText;
   }
 
@@ -3316,20 +2899,21 @@ function toggleMenuManage() {
 // 生成单个订单卡片 HTML
 function buildOrderCard(o) {
   let statusClass = '', statusText = '';
-  if (o.status === 'accepted') { statusClass = 'status-accepted'; statusText = '✅ 已接单'; }
-  else if (o.status === 'cooking') { statusClass = 'status-making'; statusText = '🔥 制作中…'; }
-  else if (o.status === 'done') { statusClass = 'status-done'; statusText = '✔ 已制作完成'; }
-  else if (o.status === 'pending') { statusClass = 'status-pending'; statusText = '待确认收款'; }
+  if (o.status === 'pending') { statusClass = 'status-pending'; statusText = '待确认收款'; }
   else if (o.status === 'retry') { statusClass = 'status-pending'; statusText = '↩️ 已打回重付'; }
+  else if (o.status === 'making') { statusClass = 'status-making'; statusText = '制作中'; }
+  else if (o.status === 'done') { statusClass = 'status-done'; statusText = '已完成'; }
   else if (o.status === 'cancelled') { statusClass = 'status-done'; statusText = '已取消'; }
   else if (o.status === 'rejected') { statusClass = 'status-done'; statusText = '已拒绝'; }
   else { statusClass = 'status-done'; statusText = o.status; }
 
   let actions = '';
-  if (o.status === 'accepted') {
-    actions = `<button class="btn-action btn-accept" onclick="event.stopPropagation();startMaking('${o.no}')">▶️ 开始制作</button><button class="btn-action btn-reject" onclick="event.stopPropagation();cancelOrder('${o.no}')">取消订单</button>`;
-  } else if (o.status === 'cooking') {
-    actions = `<button class="btn-action btn-done" onclick="event.stopPropagation();doneOrder('${o.no}')">✔ 制作完成</button>`;
+  if (o.status === 'pending') {
+    actions = `<button class="btn-action btn-accept" onclick="event.stopPropagation();confirmPaymentReceived('${o.no}')">✅ 确认收款</button><button class="btn-action btn-retry" onclick="event.stopPropagation();retryOrder('${o.no}')" style="background:#fff3cd;color:#c62828;border:1px solid #c62828;">↩️ 打回重付</button><button class="btn-action btn-reject" onclick="event.stopPropagation();cancelOrder('${o.no}')">取消订单</button>`;
+  } else if (o.status === 'confirmed') {
+    actions = `<button class="btn-action btn-accept" onclick="event.stopPropagation();startMaking('${o.no}')" style="background:#ff8f00;color:#fff;">▶️ 开始制作</button>`;
+  } else if (o.status === 'making') {
+    actions = `<button class="btn-action btn-done" onclick="event.stopPropagation();doneOrder('${o.no}')">✔ 已完成</button>`;
   } else if (o.status === 'done') {
     actions = `<span style="font-size:12px;color:green">✅ 已完成</span>`;
   } else if (o.status === 'cancelled') {
@@ -3805,8 +3389,8 @@ function confirmPaymentReceived(no) {
   updateOrderStatus(no, 'confirmed', '✅ 收款已确认，准备开始制作');
 }
 function startMaking(no) {
-  // 已接单 → 制作中
-  updateOrderStatus(no, 'cooking', '🔥 已开始制作');
+  // 待确认收款/已确认收款 → 制作中（合并"开始准备"+"开始制作"为一步）
+  updateOrderStatus(no, 'making', '🔥 已开始制作');
 }
 function doneOrder(no) {
   updateOrderStatus(no, 'done', '订单已完成！');
@@ -3863,8 +3447,10 @@ function toggleItem(id, available) {
 
 function updateAdminStats() {
   const today = new Date().toISOString().slice(0, 10);
-  const accepted = orders.filter(o => o.status === 'accepted').length;
-  const cooking = orders.filter(o => o.status === 'cooking').length;
+  const pending = orders.filter(o => o.status === 'pending').length;
+  const retry = orders.filter(o => o.status === 'retry').length;
+  const confirmed = orders.filter(o => o.status === 'confirmed').length;
+  const making = orders.filter(o => o.status === 'making').length;
   // 今日完成：只统计今天标记完成的订单
   const done = orders.filter(o => o.status === 'done' && o.doneDate === today).length;
 
@@ -3872,8 +3458,8 @@ function updateAdminStats() {
   const statMaking = document.getElementById('statMakingOrders');
   const statDone = document.getElementById('statDoneOrders');
 
-  if (statPending) statPending.textContent = accepted;
-  if (statMaking) statMaking.textContent = cooking;
+  if (statPending) statPending.textContent = retry > 0 ? `${pending}+${retry}` : pending;
+  if (statMaking) statMaking.textContent = making;
   if (statDone) statDone.textContent = done;
 }
 
@@ -3989,27 +3575,7 @@ function downloadQRCode() {
 }
 
 // 页面加载时初始化二维码
-window.addEventListener('DOMContentLoaded', () => {
-  initQRCode();
-  // 检测URL参数，自动显示订单状态页
-  const params = new URLSearchParams(window.location.search);
-  const showStatus = params.get('show');
-  const orderNo = params.get('orderNo');
-  const total = params.get('total');
-  if (showStatus === 'status' && orderNo) {
-    setTimeout(() => {
-      showOrderStatusPage(orderNo, total ? parseFloat(total) : 0);
-    }, 500);
-  }
-
-  // 检测管理员入口（?admin=1）
-  const admin = params.get('admin');
-  if (admin === '1') {
-    setTimeout(() => {
-      showAdminPage();
-    }, 500);
-  }
-});
+window.addEventListener('DOMContentLoaded', initQRCode);
 
 // ===== 数据统计页面 =====
 let _statsLoaded = false;
@@ -4390,8 +3956,91 @@ switchPage = function(page) {
   </div>
 
 
+// === 动态收款码相关函数（收钱吧预下单）===
+
 // 轮询定时器
 let _payPollTimer = null;
+
+// 调用收钱吧预下单接口，生成动态收款二维码
+// ====== 跳转支付（替代扫码支付）======
+
+// 当前订单信息（跨函数共享）
+let _currentPayOrder = { total: 0, orderNo: '', clientSn: '' };
+
+/**
+ * 调用收钱吧预下单 → 获取付款链接 → 自动/手动跳转
+ * @param {number} totalAmount - 订单金额（元）
+ * @param {string} clientSn   - 订单号
+ */
+async function generateDynamicQr(totalAmount, clientSn) {
+  // 保存当前订单信息
+  _currentPayOrder = { total: totalAmount, orderNo: clientSn, clientSn: clientSn };
+
+  // 显示"正在生成链接"
+  showPayState('loading');
+
+  try {
+    const res  = await fetch(API_BASE + '/api/shoukuanba/precreate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ totalAmount: totalAmount, clientSn: clientSn })
+    });
+    const data = await res.json();
+
+    if (!data.success || !data.qrCode) {
+      console.error('预下单失败:', data.error);
+      showPayState('error', data.error || '付款链接生成失败');
+      return;
+    }
+
+    // 保存支付URL，显示"去付款"按钮
+    _currentPayOrder.payUrl = data.qrCode;
+    showPayState('ready');
+
+    // 手机端自动跳转（延迟1秒让用户看到按钮）
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    if (isMobile) {
+      setTimeout(() => doRedirectToPay(), 1200);
+    }
+
+  } catch (err) {
+    console.error('生成付款链接失败:', err);
+    showPayState('error', '网络异常，请重试');
+  }
+}
+
+/** 显示支付页的不同状态 */
+function showPayState(state, errMsg) {
+  const ready   = document.getElementById('redirectReady');
+  const loading = document.getElementById('redirectLoading');
+  const error   = document.getElementById('redirectError');
+  const icons   = document.getElementById('payMethodIcons');
+  const tips    = document.getElementById('payStepTips');
+
+  if (ready)   ready.style.display   = 'none';
+  if (loading) loading.style.display = 'none';
+  if (error)   error.style.display   = 'none';
+  if (icons)   icons.style.display   = 'none';
+  if (tips)    tips.style.display    = 'none';
+
+  switch(state) {
+    case 'loading':
+      if (loading) loading.style.display = '';
+      break;
+    case 'ready':
+      if (ready) ready.style.display = '';
+      if (icons) icons.style.display = '';
+      break;
+    case 'error':
+      if (error) {
+        error.style.display = '';
+        const msgEl = document.getElementById('redirectErrorMsg');
+        if (msgEl && errMsg) msgEl.textContent = '⚠️ ' + errMsg;
+      }
+      if (icons) icons.style.display = '';
+      break;
+  }
+}
 
 /** 用户点击"去收钱吧付款"按钮 */
 function doRedirectToPay() {
