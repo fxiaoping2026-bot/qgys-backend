@@ -732,14 +732,16 @@ app.get('/api/shoukuanba/pay-redirect', async (req, res) => {
     const totalAmountFen = String(Math.round(amount * 100));
 
     const payParams = {
-      terminal_sn: cred.sn,
-      client_sn:    String(req.query.clientSn),
-      total_amount: totalAmountFen,
-      subject:      req.query.subject  || '企港渔叔-海鲜点餐',
-      operator:     req.query.operator || '企港渔叔',
-      return_url:   req.query.returnUrl || '',
-      pay_type:     'WAP',   // WAP支付必须指定
+      terminal_sn:  cred.sn,
+      client_sn:     String(req.query.clientSn),
+      total_amount:  totalAmountFen,
+      subject:       req.query.subject  || '企港渔叔-海鲜点餐',
+      operator:      req.query.operator || '企港渔叔',
     };
+    // return_url 非空才加（空值会导致签名错误或API报错）
+    if (req.query.returnUrl && String(req.query.returnUrl).trim()) {
+      payParams.return_url = String(req.query.returnUrl).trim();
+    }
 
     const sign = signWapParams(payParams, cred.key);
     payParams.sign = sign;
