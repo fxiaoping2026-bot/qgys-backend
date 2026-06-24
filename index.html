@@ -1639,6 +1639,8 @@ async function generateDynamicQr(totalAmount, clientSn) {
   // 自动跳转：延迟1.5秒给用户看到"准备就绪"状态
   setTimeout(function() {
     console.log('[PAY v5.2] 自动跳转执行:', redirectUrl);
+    // 移除离开确认弹窗，让跳转畅通无阻
+    window.removeEventListener('beforeunload', _onBeforeUnload);
     var link = document.getElementById('payRedirectLink');
     if (link) link.href = redirectUrl;
     window.open(redirectUrl, '_self');
@@ -2932,12 +2934,13 @@ function closeJumpModal() {
 }
 
 // 离开页面前提醒（顾客端：防止误关，无论购物车是否有东西）
-window.addEventListener('beforeunload', function(e) {
+function _onBeforeUnload(e) {
   // 始终提醒，防止误关页面需要重新扫码
   e.preventDefault();
   e.returnValue = '确定要退出点餐页面吗？';
   return '确定要退出点餐页面吗？';
-});
+}
+window.addEventListener('beforeunload', _onBeforeUnload);
 
 // 阻止微信浏览器手势返回误退出（全局保护）
 (function() {
@@ -4394,6 +4397,8 @@ function doRedirectToPay() {
     showToast('⏳ 正在准备付款链接...'); return;
   }
   console.log('[PAY] 用户点击付款，跳转:', _currentPayOrder.payUrl);
+  // 移除离开确认弹窗，让支付跳转畅通无阻
+  window.removeEventListener('beforeunload', _onBeforeUnload);
   // 记录跳转时间（用于检测用户是否已返回）
   localStorage.setItem('qgys_pay_redirect_time', Date.now());
   localStorage.setItem('qgys_pay_redirect_order', _currentPayOrder.orderNo);
