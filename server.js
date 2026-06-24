@@ -794,6 +794,7 @@ app.get('/api/shoukuanba/pay-redirect', async (req, res) => {
       }
     } else {
       // 请求失败：把完整请求和响应都返回，方便调试
+      const errorMsg = data.error_message || data.msg || data.message || data.err_msg || JSON.stringify(data);
       const debugInfo = {
         request_params: debugParams,
         signature: sign,
